@@ -16,16 +16,6 @@ run-name: "Checkov - ${{ github.actor }} - ${{ github.event_name == 'pull_reques
           Set to true to force enable, or false to force disable.
         required: false
         type: boolean
-  pull_request:
-    branches:
-      - main
-  push:
-    branches:
-      - main
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: false
 
 permissions: {} # Deny token access by default; jobs grant only what they need.
 
