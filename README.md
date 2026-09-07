@@ -6,14 +6,24 @@ This repository contains workflows that depend on `datasciencecampus` organizati
 
 ## Overview
 
-This repository currently provides two public reusable workflows:
+This repository currently provides three public reusable workflows:
 
 - `add-issue-to-projects`: add new issues to one or more `datasciencecampus` ProjectsV2 boards.
 - `add-pr-to-projects`: add new pull requests to one or more `datasciencecampus` ProjectsV2 boards and set configured field values.
+- `security-analysis`: scan GitHub Actions workflows and infrastructure-as-code for security issues using zizmor and checkov.
 
 Each public reusable workflow has a matching internal implementation workflow. The public workflow is the caller-facing contract; the internal workflow owns the privileged `workflow_dispatch` path and project mutation logic.
 
 ## Workflow Catalog
+
+### `security-analysis`
+
+Orchestrates GitHub Actions security analysis with `zizmor` and infrastructure security scanning with `checkov`. Runs automatically on push to `main` and pull requests against `main`, and can be called from other repositories.
+
+- Orchestrator workflow: [.github/workflows/security-analysis.yml](.github/workflows/security-analysis.yml)
+- Child workflow (zizmor): [.github/workflows/zizmor.yml](.github/workflows/zizmor.yml)
+- Child workflow (checkov): [.github/workflows/checkov.yml](.github/workflows/checkov.yml)
+- How-to guide: [docs/how-to/use-security-analysis-workflow.md](docs/how-to/use-security-analysis-workflow.md)
 
 ### `add-issue-to-projects`
 
