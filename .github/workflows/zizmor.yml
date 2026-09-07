@@ -1,5 +1,5 @@
 name: GitHub Actions Security Analysis with zizmor 🌈
-run-name: ${{ github.workflow }} - ${{ github.actor }} pushed a change to ${{ github.ref_name }}
+run-name: "zizmor - ${{ github.actor }} - ${{ github.event_name == 'pull_request' && format('PR #{0}', github.event.pull_request.number) || github.ref_name }}"
 
 'on':
   workflow_call:
@@ -15,21 +15,11 @@ run-name: ${{ github.workflow }} - ${{ github.actor }} pushed a change to ${{ gi
         type: boolean
         default: false
   pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
-  workflow_dispatch:
-    inputs:
-      config-path:
-        description: Path to the zizmor config file.
-        required: false
-        type: string
-        default: ./configs/zizmor.yaml
-      advanced-security:
-        description: Upload SARIF results to GitHub Advanced Security.
-        required: false
-        type: boolean
-        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
