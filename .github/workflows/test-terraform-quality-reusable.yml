@@ -130,11 +130,11 @@ jobs:
             exit 1
           fi
           
-          # Fail if negative tests succeeded (they should all fail)
-          if [ "$RESULT_NEGATIVE_INVALID_JSON" = "success" ] || \
-             [ "$RESULT_NEGATIVE_ABSOLUTE_PATH" = "success" ] || \
-             [ "$RESULT_NEGATIVE_DIRECTORY_TRAVERSAL" = "success" ]; then
-            echo "❌ Security validation failed (negative tests should have blocked malicious inputs)"
+          # Fail if negative tests did NOT fail (they should all fail)
+          if [ "$RESULT_NEGATIVE_INVALID_JSON" != "failure" ] || \
+             [ "$RESULT_NEGATIVE_ABSOLUTE_PATH" != "failure" ] || \
+             [ "$RESULT_NEGATIVE_DIRECTORY_TRAVERSAL" != "failure" ]; then
+            echo "❌ Security validation failed (negative tests should have been blocked)"
             exit 1
           fi
           
