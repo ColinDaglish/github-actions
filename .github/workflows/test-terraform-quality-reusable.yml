@@ -75,12 +75,12 @@ jobs:
       run-validate: true
       continue_on_error: true
 
-  test-positive-all-dirs:
-    name: "Test: positive - all terraform directories"
+  test-positive-test-dir:
+    name: "Test: positive - test terraform directory"
     uses: ./.github/workflows/terraform-quality.yml
     with:
-      terraform-dirs: '["terraform/01_sandbox", "terraform/02_dev_nonprod", "terraform/03_stg_prod", "terraform/04_prd_prod"]'
-      run-fmt: false
+      terraform-dirs: '["terraform/05_test"]'
+      run-fmt: true
       run-validate: true
       run-tflint: false
 
