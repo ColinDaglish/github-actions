@@ -28,6 +28,11 @@ on:
         type: boolean
         default: true
         required: false
+      continue_on_error:
+        description: "Continue workflow on validation errors (for negative testing)"
+        type: boolean
+        default: false
+        required: false
 
 run-name: "Terraform Quality - ${{ github.actor }} - ${{ github.event_name == 'pull_request' && format('PR #{0}', github.event.number) || format('push to {0}', github.ref_name) }}"
 
@@ -97,6 +102,7 @@ jobs:
         with:
           terraform_version: ${{ inputs.terraform-version }}
       - name: terraform fmt
+        continue-on-error: ${{ inputs.continue_on_error }}
         run: |
           terraform fmt -check -recursive terraform || {
             echo "Terraform formatting check failed. Run 'terraform fmt -recursive terraform' and commit the changes." >&2
@@ -124,6 +130,7 @@ jobs:
         run: terraform init -backend=false
       - name: terraform validate
         working-directory: ${{ matrix.dir }}
+        continue-on-error: ${{ inputs.continue_on_error }}
         run: terraform validate
 
   tflint:
@@ -140,4 +147,5 @@ jobs:
       - name: tflint init
         run: tflint --init --config "$WORKSPACE_DIR"/configs/.tflint.hcl
       - name: tflint
+        continue-on-error: ${{ inputs.continue_on_error }}
         run: tflint --config "$WORKSPACE_DIR"/configs/.tflint.hcl --chdir terraform --recursive

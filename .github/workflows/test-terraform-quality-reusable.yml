@@ -46,34 +46,34 @@ jobs:
   test-negative-invalid-json:
     name: "Test: negative - invalid JSON paths"
     uses: ./.github/workflows/terraform-quality.yml
-    continue-on-error: true
     with:
       terraform-dirs: "not-valid-json"
       run-validate: true
+      continue_on_error: true
 
   test-negative-absolute-path:
     name: "Test: negative - absolute path injection"
     uses: ./.github/workflows/terraform-quality.yml
-    continue-on-error: true
     with:
       terraform-dirs: '["/etc/passwd"]'
       run-validate: true
+      continue_on_error: true
 
   test-negative-directory-traversal:
     name: "Test: negative - directory traversal attempt"
     uses: ./.github/workflows/terraform-quality.yml
-    continue-on-error: true
     with:
       terraform-dirs: '["../../etc/passwd"]'
       run-validate: true
+      continue_on_error: true
 
   test-negative-empty-path:
     name: "Test: negative - empty path"
     uses: ./.github/workflows/terraform-quality.yml
-    continue-on-error: true
     with:
       terraform-dirs: '[""]'
       run-validate: true
+      continue_on_error: true
 
   test-summary:
     name: "Test Summary"
