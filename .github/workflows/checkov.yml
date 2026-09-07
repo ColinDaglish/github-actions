@@ -13,7 +13,6 @@ run-name: "Checkov - ${{ github.actor }} - ${{ github.event_name == 'pull_reques
         description: Upload SARIF results to GitHub Advanced Security.
         required: false
         type: boolean
-        default: true
   pull_request:
     branches:
       - main
@@ -47,6 +46,6 @@ jobs:
           output_file_path: console,results.sarif
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
-        if: (success() || failure()) && inputs.advanced-security
+        if: (success() || failure()) && (inputs.advanced-security || !github.event.repository.private)
         with:
           sarif_file: results.sarif
