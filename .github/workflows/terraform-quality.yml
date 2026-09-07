@@ -62,9 +62,9 @@ jobs:
           set -e
           dirs="$TERRAFORM_DIRS"
           
-          # Validate JSON format
-          if ! echo "$dirs" | jq empty 2>/dev/null; then
-            echo "ERROR: terraform-dirs must be valid JSON" >&2
+          # Validate JSON format (must be an array of strings)
+          if ! echo "$dirs" | jq -e 'type == "array" and all(.[]; type == "string")' >/dev/null; then
+            echo "ERROR: terraform-dirs must be a JSON array of strings" >&2
             exit 1
           fi
           
