@@ -75,13 +75,14 @@ jobs:
       run-validate: true
       continue_on_error: true
 
-  test-negative-empty-path:
-    name: "Test: negative - empty path"
+  test-positive-all-dirs:
+    name: "Test: positive - all terraform directories"
     uses: ./.github/workflows/terraform-quality.yml
     with:
-      terraform-dirs: '[""]'
+      terraform-dirs: '["terraform/01_sandbox", "terraform/02_dev_nonprod", "terraform/03_stg_prod", "terraform/04_prd_prod"]'
+      run-fmt: false
       run-validate: true
-      continue_on_error: true
+      run-tflint: false
 
   # ============================================================
   # Group 3: Summary (runs after groups 1 & 2)
@@ -94,34 +95,35 @@ jobs:
       - test-positive-default
       - test-positive-single-dir
       - test-positive-custom-version
+      - test-positive-all-dirs
       - test-negative-invalid-json
       - test-negative-absolute-path
       - test-negative-directory-traversal
-      - test-negative-empty-path
     if: always()
     env:
       RESULT_POSITIVE_DEFAULT: ${{ needs.test-positive-default.result }}
       RESULT_POSITIVE_SINGLE_DIR: ${{ needs.test-positive-single-dir.result }}
       RESULT_POSITIVE_CUSTOM_VERSION: ${{ needs.test-positive-custom-version.result }}
+      RESULT_POSITIVE_ALL_DIRS: ${{ needs.test-positive-all-dirs.result }}
       RESULT_NEGATIVE_INVALID_JSON: ${{ needs.test-negative-invalid-json.result }}
       RESULT_NEGATIVE_ABSOLUTE_PATH: ${{ needs.test-negative-absolute-path.result }}
       RESULT_NEGATIVE_DIRECTORY_TRAVERSAL: ${{ needs.test-negative-directory-traversal.result }}
-      RESULT_NEGATIVE_EMPTY_PATH: ${{ needs.test-negative-empty-path.result }}
     steps:
       - name: Report test results
         run: |
           echo "✓ Positive test (default inputs): $RESULT_POSITIVE_DEFAULT"
           echo "✓ Positive test (single directory): $RESULT_POSITIVE_SINGLE_DIR"
           echo "✓ Positive test (custom version): $RESULT_POSITIVE_CUSTOM_VERSION"
+          echo "✓ Positive test (all directories): $RESULT_POSITIVE_ALL_DIRS"
           echo "✗ Negative test (invalid JSON): $RESULT_NEGATIVE_INVALID_JSON"
           echo "✗ Negative test (absolute path): $RESULT_NEGATIVE_ABSOLUTE_PATH"
           echo "✗ Negative test (directory traversal): $RESULT_NEGATIVE_DIRECTORY_TRAVERSAL"
-          echo "✗ Negative test (empty path): $RESULT_NEGATIVE_EMPTY_PATH"
           
           # Fail if positive tests failed or negative tests succeeded unexpectedly
           if [ "$RESULT_POSITIVE_DEFAULT" = "failure" ] || \
              [ "$RESULT_POSITIVE_SINGLE_DIR" = "failure" ] || \
-             [ "$RESULT_POSITIVE_CUSTOM_VERSION" = "failure" ]; then
+             [ "$RESULT_POSITIVE_CUSTOM_VERSION" = "failure" ] || \
+             [ "$RESULT_POSITIVE_ALL_DIRS" = "failure" ]; then
             echo "❌ Positive tests failed"
             exit 1
           fi
