@@ -44,7 +44,7 @@ permissions:
   contents: read
 
 env:
-  TERRAFORM_VERSION: ${{ inputs.terraform-version }}
+  TERRAFORM_VERSION: ${{ inputs['terraform-version'] }}
 
 jobs:
   validate-inputs:
