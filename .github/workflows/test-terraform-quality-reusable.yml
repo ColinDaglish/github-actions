@@ -121,7 +121,7 @@ jobs:
           echo "✗ Negative test (absolute path): $RESULT_NEGATIVE_ABSOLUTE_PATH"
           echo "✗ Negative test (directory traversal): $RESULT_NEGATIVE_DIRECTORY_TRAVERSAL"
           
-          # Fail if positive tests failed or negative tests succeeded unexpectedly
+          # Fail if positive tests failed
           if [ "$RESULT_POSITIVE_DEFAULT" = "failure" ] || \
              [ "$RESULT_POSITIVE_SINGLE_DIR" = "failure" ] || \
              [ "$RESULT_POSITIVE_CUSTOM_VERSION" = "failure" ] || \
@@ -130,10 +130,12 @@ jobs:
             exit 1
           fi
           
+          # Fail if negative tests succeeded (they should all fail)
           if [ "$RESULT_NEGATIVE_INVALID_JSON" = "success" ] || \
              [ "$RESULT_NEGATIVE_ABSOLUTE_PATH" = "success" ] || \
              [ "$RESULT_NEGATIVE_DIRECTORY_TRAVERSAL" = "success" ]; then
-            echo "⚠️  Security validation passed (negative tests blocked malicious inputs)"
+            echo "❌ Security validation failed (negative tests should have blocked malicious inputs)"
+            exit 1
           fi
           
-          echo "✅ All tests completed"
+          echo "✅ All tests passed (positive tests succeeded, negative tests correctly blocked malicious inputs)"
