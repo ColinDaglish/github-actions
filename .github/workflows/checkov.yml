@@ -10,7 +10,10 @@ run-name: "Checkov - ${{ github.actor }} - ${{ github.event_name == 'pull_reques
         type: string
         default: ./configs/checkov.yml
       advanced-security:
-        description: Upload SARIF results to GitHub Advanced Security.
+        description: >-
+          Upload SARIF results to GitHub Advanced Security.
+          Auto-enabled for public repositories, auto-disabled for private repositories.
+          Set to true to force enable, or false to force disable.
         required: false
         type: boolean
   pull_request:
