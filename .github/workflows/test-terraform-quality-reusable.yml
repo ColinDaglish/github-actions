@@ -33,7 +33,7 @@ jobs:
     name: "Test: positive - single directory"
     uses: ./.github/workflows/terraform-quality.yml
     with:
-      terraform-dirs: '["terraform/01_sandbox"]'
+      terraform-dirs: '["terraform/05_test"]'
       run-fmt: false
       run-validate: true
       run-tflint: false
