@@ -17,6 +17,10 @@ permissions:
   contents: read
 
 jobs:
+  # ============================================================
+  # Group 1: Positive Tests (concurrent, no dependencies)
+  # Verify terraform-quality checks work correctly
+  # ============================================================
   test-positive-default:
     name: "Test: positive - default inputs"
     uses: ./.github/workflows/terraform-quality.yml
@@ -38,11 +42,15 @@ jobs:
     name: "Test: positive - custom terraform version"
     uses: ./.github/workflows/terraform-quality.yml
     with:
-      terraform-version: "1.13.7"
+      terraform-version: "1.12.0"
       run-fmt: false
       run-validate: true
       run-tflint: false
 
+  # ============================================================
+  # Group 2: Negative Tests (concurrent, no dependencies)
+  # Verify terraform-quality catches security issues
+  # ============================================================
   test-negative-invalid-json:
     name: "Test: negative - invalid JSON paths"
     uses: ./.github/workflows/terraform-quality.yml
@@ -75,6 +83,10 @@ jobs:
       run-validate: true
       continue_on_error: true
 
+  # ============================================================
+  # Group 3: Summary (runs after groups 1 & 2)
+  # Aggregate results and verify test expectations
+  # ============================================================
   test-summary:
     name: "Test Summary"
     runs-on: ubuntu-latest
