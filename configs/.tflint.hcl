@@ -1,15 +1,3 @@
-plugin "aws" {
-  enabled = false
-}
-
-plugin "google" {
-  enabled = false
-}
-
-plugin "azurerm" {
-  enabled = false
-}
-
 rule "terraform_comment_syntax" {
   enabled = true
 }
