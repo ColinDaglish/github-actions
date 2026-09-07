@@ -1,6 +1,6 @@
 name: Add Pull Request To Projects
 
-'on':
+"on":
   workflow_call:
     inputs:
       implementation_ref:

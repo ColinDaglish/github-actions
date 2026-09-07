@@ -1,7 +1,7 @@
 name: Add Issue To Projects Implementation
 
 # checkov:skip=CKV_GHA_7: This is an internal implementation workflow that is dispatched programmatically from public reusable workflows with validated inputs.
-'on':
+"on":
   workflow_dispatch:
     inputs:
       repository:

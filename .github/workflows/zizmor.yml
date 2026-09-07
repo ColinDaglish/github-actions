@@ -1,7 +1,7 @@
 name: GitHub Actions Security Analysis with zizmor 🌈
 run-name: "zizmor - ${{ github.actor }} - ${{ github.event_name == 'pull_request' && format('PR #{0}', github.event.pull_request.number) || github.ref_name }}"
 
-'on':
+"on":
   workflow_call:
     inputs:
       config-path:

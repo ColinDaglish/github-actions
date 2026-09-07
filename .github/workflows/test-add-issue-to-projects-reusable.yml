@@ -1,6 +1,6 @@
 name: Test Add Issue To Projects Reusable Workflow
 
-'on':
+"on":
   issues:
     types:
       - opened
