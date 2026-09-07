@@ -13,7 +13,7 @@ run-name: "zizmor - ${{ github.actor }} - ${{ github.event_name == 'pull_request
         description: Upload SARIF results to GitHub Advanced Security.
         required: false
         type: boolean
-        default: false
+        default: true
       persona:
         description: Persona for zizmor analysis (regular, pedantic, auditor).
         required: false
