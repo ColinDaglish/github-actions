@@ -36,10 +36,6 @@ on:
 
 run-name: "Terraform Quality - ${{ github.actor }} - ${{ github.event_name == 'pull_request' && format('PR #{0}', github.event.number) || format('push to {0}', github.ref_name) }}"
 
-concurrency:
-  group: "terraform-quality-${{ github.ref_name }}"
-  cancel-in-progress: true
-
 permissions:
   contents: read
 
