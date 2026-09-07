@@ -25,6 +25,7 @@ jobs:
     name: "Test: positive - default inputs"
     uses: ./.github/workflows/terraform-quality.yml
     with:
+      terraform-dirs: '["terraform/05_test"]'
       run-fmt: true
       run-validate: true
       run-tflint: true
@@ -42,6 +43,7 @@ jobs:
     name: "Test: positive - custom terraform version"
     uses: ./.github/workflows/terraform-quality.yml
     with:
+      terraform-dirs: '["terraform/05_test"]'
       terraform-version: "1.12.0"
       run-fmt: false
       run-validate: true
