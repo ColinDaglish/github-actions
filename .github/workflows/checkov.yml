@@ -4,11 +4,6 @@ run-name: "Checkov - ${{ github.actor }} - ${{ github.event_name == 'pull_reques
 "on":
   workflow_call:
     inputs:
-      config-path:
-        description: Path to the Checkov config file.
-        required: false
-        type: string
-        default: ./configs/checkov.yml
       advanced-security:
         description: Upload SARIF results to GitHub Advanced Security.
         required: false
