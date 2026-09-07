@@ -55,9 +55,9 @@ jobs:
     steps:
       - name: Validate terraform-dirs input
         id: validate
-        continue-on-error: true
+        continue-on-error: ${{ inputs.continue_on_error }}
         env:
-          TERRAFORM_DIRS: ${{ inputs.terraform-dirs }}
+          TERRAFORM_DIRS: ${{ inputs['terraform-dirs'] }}
         run: |
           set -e
           dirs="$TERRAFORM_DIRS"
