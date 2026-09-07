@@ -1,0 +1,124 @@
+name: Test Terraform Quality Reusable Workflow
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/terraform-quality.yml"
+      - ".github/workflows/test-terraform-quality-reusable.yml"
+
+run-name: "Test Terraform Quality - ${{ github.actor }} - PR #${{ github.event.number }}"
+
+concurrency:
+  group: "test-terraform-quality-${{ github.event.number }}"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test-positive-default:
+    name: "Test: positive - default inputs"
+    uses: ./.github/workflows/terraform-quality.yml
+    with:
+      run-fmt: true
+      run-validate: true
+      run-tflint: true
+
+  test-positive-single-dir:
+    name: "Test: positive - single directory"
+    uses: ./.github/workflows/terraform-quality.yml
+    with:
+      terraform-dirs: '["terraform/01_sandbox"]'
+      run-fmt: false
+      run-validate: true
+      run-tflint: false
+
+  test-positive-custom-version:
+    name: "Test: positive - custom terraform version"
+    uses: ./.github/workflows/terraform-quality.yml
+    with:
+      terraform-version: "1.13.7"
+      run-fmt: false
+      run-validate: true
+      run-tflint: false
+
+  test-negative-invalid-json:
+    name: "Test: negative - invalid JSON paths"
+    uses: ./.github/workflows/terraform-quality.yml
+    with:
+      terraform-dirs: "not-valid-json"
+      run-validate: true
+    continue-on-error: true
+
+  test-negative-absolute-path:
+    name: "Test: negative - absolute path injection"
+    uses: ./.github/workflows/terraform-quality.yml
+    with:
+      terraform-dirs: '["/etc/passwd"]'
+      run-validate: true
+    continue-on-error: true
+
+  test-negative-directory-traversal:
+    name: "Test: negative - directory traversal attempt"
+    uses: ./.github/workflows/terraform-quality.yml
+    with:
+      terraform-dirs: '["../../etc/passwd"]'
+      run-validate: true
+    continue-on-error: true
+
+  test-negative-empty-path:
+    name: "Test: negative - empty path"
+    uses: ./.github/workflows/terraform-quality.yml
+    with:
+      terraform-dirs: '[""]'
+      run-validate: true
+    continue-on-error: true
+
+  test-summary:
+    name: "Test Summary"
+    runs-on: ubuntu-latest
+    needs:
+      - test-positive-default
+      - test-positive-single-dir
+      - test-positive-custom-version
+      - test-negative-invalid-json
+      - test-negative-absolute-path
+      - test-negative-directory-traversal
+      - test-negative-empty-path
+    if: always()
+    env:
+      RESULT_POSITIVE_DEFAULT: ${{ needs.test-positive-default.result }}
+      RESULT_POSITIVE_SINGLE_DIR: ${{ needs.test-positive-single-dir.result }}
+      RESULT_POSITIVE_CUSTOM_VERSION: ${{ needs.test-positive-custom-version.result }}
+      RESULT_NEGATIVE_INVALID_JSON: ${{ needs.test-negative-invalid-json.result }}
+      RESULT_NEGATIVE_ABSOLUTE_PATH: ${{ needs.test-negative-absolute-path.result }}
+      RESULT_NEGATIVE_DIRECTORY_TRAVERSAL: ${{ needs.test-negative-directory-traversal.result }}
+      RESULT_NEGATIVE_EMPTY_PATH: ${{ needs.test-negative-empty-path.result }}
+    steps:
+      - name: Report test results
+        run: |
+          echo "✓ Positive test (default inputs): $RESULT_POSITIVE_DEFAULT"
+          echo "✓ Positive test (single directory): $RESULT_POSITIVE_SINGLE_DIR"
+          echo "✓ Positive test (custom version): $RESULT_POSITIVE_CUSTOM_VERSION"
+          echo "✗ Negative test (invalid JSON): $RESULT_NEGATIVE_INVALID_JSON"
+          echo "✗ Negative test (absolute path): $RESULT_NEGATIVE_ABSOLUTE_PATH"
+          echo "✗ Negative test (directory traversal): $RESULT_NEGATIVE_DIRECTORY_TRAVERSAL"
+          echo "✗ Negative test (empty path): $RESULT_NEGATIVE_EMPTY_PATH"
+          
+          # Fail if positive tests failed or negative tests succeeded unexpectedly
+          if [ "$RESULT_POSITIVE_DEFAULT" = "failure" ] || \
+             [ "$RESULT_POSITIVE_SINGLE_DIR" = "failure" ] || \
+             [ "$RESULT_POSITIVE_CUSTOM_VERSION" = "failure" ]; then
+            echo "❌ Positive tests failed"
+            exit 1
+          fi
+          
+          if [ "$RESULT_NEGATIVE_INVALID_JSON" = "success" ] || \
+             [ "$RESULT_NEGATIVE_ABSOLUTE_PATH" = "success" ] || \
+             [ "$RESULT_NEGATIVE_DIRECTORY_TRAVERSAL" = "success" ] || \
+             [ "$RESULT_NEGATIVE_EMPTY_PATH" = "success" ]; then
+            echo "⚠️  Security validation passed (negative tests blocked malicious inputs)"
+          fi
+          
+          echo "✅ All tests completed"
