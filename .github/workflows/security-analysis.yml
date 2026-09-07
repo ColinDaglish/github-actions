@@ -45,9 +45,9 @@ jobs:
       contents: read # Required to read repository contents during analysis.
       security-events: write # Required to upload SARIF results to GitHub Advanced Security.
     with:
-      config-path: ${{ inputs['zizmor-config'] }}
-      advanced-security: ${{ inputs['advanced-security'] }}
-      persona: ${{ inputs['zizmor-persona'] }}
+      config-path: ${{ github.event_name == 'workflow_call' && inputs['zizmor-config'] || './configs/zizmor.yaml' }}
+      advanced-security: ${{ github.event_name == 'workflow_call' && inputs['advanced-security'] || null }}
+      persona: ${{ github.event_name == 'workflow_call' && inputs['zizmor-persona'] || 'auditor' }}
 
   checkov:
     uses: ./.github/workflows/checkov.yml
@@ -55,5 +55,5 @@ jobs:
       contents: read # Required to check out and scan repository content.
       security-events: write # Required to upload SARIF results to GitHub Advanced Security.
     with:
-      config-path: ${{ inputs['checkov-config'] }}
-      advanced-security: ${{ inputs['advanced-security'] }}
+      config-path: ${{ github.event_name == 'workflow_call' && inputs['checkov-config'] || './configs/checkov.yml' }}
+      advanced-security: ${{ github.event_name == 'workflow_call' && inputs['advanced-security'] || null }}
