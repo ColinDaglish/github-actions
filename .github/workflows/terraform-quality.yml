@@ -48,6 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Validate terraform-dirs input
+        continue-on-error: ${{ inputs.continue_on_error }}
         env:
           TERRAFORM_DIRS: ${{ inputs.terraform-dirs }}
         run: |
