@@ -132,8 +132,7 @@ jobs:
           
           if [ "$RESULT_NEGATIVE_INVALID_JSON" = "success" ] || \
              [ "$RESULT_NEGATIVE_ABSOLUTE_PATH" = "success" ] || \
-             [ "$RESULT_NEGATIVE_DIRECTORY_TRAVERSAL" = "success" ] || \
-             [ "$RESULT_NEGATIVE_EMPTY_PATH" = "success" ]; then
+             [ "$RESULT_NEGATIVE_DIRECTORY_TRAVERSAL" = "success" ]; then
             echo "⚠️  Security validation passed (negative tests blocked malicious inputs)"
           fi
           
