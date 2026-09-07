@@ -14,6 +14,12 @@ run-name: "Checkov - ${{ github.actor }} - ${{ github.event_name == 'pull_reques
         required: false
         type: boolean
         default: true
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
