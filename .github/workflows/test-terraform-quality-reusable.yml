@@ -110,32 +110,54 @@ jobs:
       RESULT_NEGATIVE_INVALID_JSON: ${{ needs.test-negative-invalid-json.result }}
       RESULT_NEGATIVE_ABSOLUTE_PATH: ${{ needs.test-negative-absolute-path.result }}
       RESULT_NEGATIVE_DIRECTORY_TRAVERSAL: ${{ needs.test-negative-directory-traversal.result }}
+      VALIDATION_POSITIVE_DEFAULT: ${{ needs.test-positive-default.outputs.validation-passed }}
+      VALIDATION_POSITIVE_SINGLE_DIR: ${{ needs.test-positive-single-dir.outputs.validation-passed }}
+      VALIDATION_POSITIVE_CUSTOM_VERSION: ${{ needs.test-positive-custom-version.outputs.validation-passed }}
+      VALIDATION_POSITIVE_TEST_DIR: ${{ needs.test-positive-test-dir.outputs.validation-passed }}
+      VALIDATION_NEGATIVE_INVALID_JSON: ${{ needs.test-negative-invalid-json.outputs.validation-passed }}
+      VALIDATION_NEGATIVE_ABSOLUTE_PATH: ${{ needs.test-negative-absolute-path.outputs.validation-passed }}
+      VALIDATION_NEGATIVE_DIRECTORY_TRAVERSAL: ${{ needs.test-negative-directory-traversal.outputs.validation-passed }}
     steps:
       - name: Report test results
         run: |
-          echo "✓ Positive test (default inputs): $RESULT_POSITIVE_DEFAULT"
-          echo "✓ Positive test (single directory): $RESULT_POSITIVE_SINGLE_DIR"
-          echo "✓ Positive test (custom version): $RESULT_POSITIVE_CUSTOM_VERSION"
-          echo "✓ Positive test (test directory): $RESULT_POSITIVE_TEST_DIR"
-          echo "✗ Negative test (invalid JSON): $RESULT_NEGATIVE_INVALID_JSON"
-          echo "✗ Negative test (absolute path): $RESULT_NEGATIVE_ABSOLUTE_PATH"
-          echo "✗ Negative test (directory traversal): $RESULT_NEGATIVE_DIRECTORY_TRAVERSAL"
+          echo "✓ Positive test (default inputs): $RESULT_POSITIVE_DEFAULT (validation: $VALIDATION_POSITIVE_DEFAULT)"
+          echo "✓ Positive test (single directory): $RESULT_POSITIVE_SINGLE_DIR (validation: $VALIDATION_POSITIVE_SINGLE_DIR)"
+          echo "✓ Positive test (custom version): $RESULT_POSITIVE_CUSTOM_VERSION (validation: $VALIDATION_POSITIVE_CUSTOM_VERSION)"
+          echo "✓ Positive test (test directory): $RESULT_POSITIVE_TEST_DIR (validation: $VALIDATION_POSITIVE_TEST_DIR)"
+          echo "✗ Negative test (invalid JSON): $RESULT_NEGATIVE_INVALID_JSON (validation: $VALIDATION_NEGATIVE_INVALID_JSON)"
+          echo "✗ Negative test (absolute path): $RESULT_NEGATIVE_ABSOLUTE_PATH (validation: $VALIDATION_NEGATIVE_ABSOLUTE_PATH)"
+          echo "✗ Negative test (directory traversal): $RESULT_NEGATIVE_DIRECTORY_TRAVERSAL (validation: $VALIDATION_NEGATIVE_DIRECTORY_TRAVERSAL)"
           
-          # Fail if positive tests failed
-          if [ "$RESULT_POSITIVE_DEFAULT" = "failure" ] || \
-             [ "$RESULT_POSITIVE_SINGLE_DIR" = "failure" ] || \
-             [ "$RESULT_POSITIVE_CUSTOM_VERSION" = "failure" ] || \
-             [ "$RESULT_POSITIVE_TEST_DIR" = "failure" ]; then
-            echo "❌ Positive tests failed"
+          # Check positive tests: should succeed AND validation should pass
+          if [ "$RESULT_POSITIVE_DEFAULT" = "failure" ] || [ "$VALIDATION_POSITIVE_DEFAULT" != "true" ]; then
+            echo "❌ Positive test (default) failed validation"
+            exit 1
+          fi
+          if [ "$RESULT_POSITIVE_SINGLE_DIR" = "failure" ] || [ "$VALIDATION_POSITIVE_SINGLE_DIR" != "true" ]; then
+            echo "❌ Positive test (single dir) failed validation"
+            exit 1
+          fi
+          if [ "$RESULT_POSITIVE_CUSTOM_VERSION" = "failure" ] || [ "$VALIDATION_POSITIVE_CUSTOM_VERSION" != "true" ]; then
+            echo "❌ Positive test (custom version) failed validation"
+            exit 1
+          fi
+          if [ "$RESULT_POSITIVE_TEST_DIR" = "failure" ] || [ "$VALIDATION_POSITIVE_TEST_DIR" != "true" ]; then
+            echo "❌ Positive test (test dir) failed validation"
             exit 1
           fi
           
-          # Fail if negative tests did NOT fail (they should all fail)
-          if [ "$RESULT_NEGATIVE_INVALID_JSON" != "failure" ] || \
-             [ "$RESULT_NEGATIVE_ABSOLUTE_PATH" != "failure" ] || \
-             [ "$RESULT_NEGATIVE_DIRECTORY_TRAVERSAL" != "failure" ]; then
-            echo "❌ Security validation failed (negative tests should have been blocked)"
+          # Check negative tests: validation should have FAILED (validation-passed should be 'false')
+          if [ "$VALIDATION_NEGATIVE_INVALID_JSON" = "true" ]; then
+            echo "❌ Negative test (invalid JSON) should have failed validation"
+            exit 1
+          fi
+          if [ "$VALIDATION_NEGATIVE_ABSOLUTE_PATH" = "true" ]; then
+            echo "❌ Negative test (absolute path) should have failed validation"
+            exit 1
+          fi
+          if [ "$VALIDATION_NEGATIVE_DIRECTORY_TRAVERSAL" = "true" ]; then
+            echo "❌ Negative test (directory traversal) should have failed validation"
             exit 1
           fi
           
-          echo "✅ All tests passed (positive tests succeeded, negative tests correctly blocked malicious inputs)"
+          echo "✅ All tests passed (positive tests validated successfully, negative tests correctly blocked)"

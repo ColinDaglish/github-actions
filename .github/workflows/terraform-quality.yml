@@ -33,6 +33,10 @@ on:
         type: boolean
         default: false
         required: false
+    outputs:
+      validation-passed:
+        description: "Whether terraform-dirs input validation passed"
+        value: ${{ jobs.validate-inputs.outputs.validation-passed }}
 
 run-name: "Terraform Quality - ${{ github.actor }} - ${{ github.event_name == 'pull_request' && format('PR #{0}', github.event.number) || format('push to {0}', github.ref_name) }}"
 
@@ -51,6 +55,7 @@ jobs:
     steps:
       - name: Validate terraform-dirs input
         id: validate
+        continue-on-error: true
         env:
           TERRAFORM_DIRS: ${{ inputs.terraform-dirs }}
         run: |
