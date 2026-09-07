@@ -51,5 +51,5 @@ jobs:
         uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v0.6.2
         with:
           config: ${{ inputs.config-path || github.event.inputs.config-path || './configs/zizmor.yaml' }}
-          advanced-security: ${{ inputs.advanced-security || github.event.inputs.advanced-security == 'true' || false }}
+          advanced-security: ${{ inputs.advanced-security || github.event.inputs.advanced-security == 'true' || true }}
           persona: ${{ inputs.persona || github.event.inputs.persona || 'auditor' }}
