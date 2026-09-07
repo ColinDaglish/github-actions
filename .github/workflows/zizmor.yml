@@ -49,6 +49,7 @@ jobs:
       - name: Run zizmor
         uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v0.6.2
         with:
-          config: ${{ inputs.config-path || github.event.inputs.config-path || './configs/zizmor.yaml' }}
-          advanced-security: ${{ inputs.advanced-security || github.event.inputs.advanced-security == 'true' || !github.event.repository.private }}
-          persona: ${{ inputs.persona || github.event.inputs.persona || 'auditor' }}
+          config: ${{ inputs.config-path || './configs/zizmor.yaml' }}
+          # Tri-state advanced-security: true=upload SARIF, false=skip upload, null=auto (true for public, false for private)
+          advanced-security: ${{ inputs.advanced-security == true || (!github.event.repository.private && inputs.advanced-security != false) }}
+          persona: ${{ inputs.persona || 'auditor' }}
