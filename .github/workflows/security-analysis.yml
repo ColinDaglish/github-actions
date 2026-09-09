@@ -46,6 +46,7 @@ jobs:
       security-events: write # Required to upload SARIF results to GitHub Advanced Security.
     with:
       config-path: ${{ github.event_name == 'workflow_call' && inputs['zizmor-config'] || './configs/zizmor.yaml' }}
+      advanced-security: ${{ github.event_name == 'workflow_call' && inputs['advanced-security'] || null }}
       persona: ${{ github.event_name == 'workflow_call' && inputs['zizmor-persona'] || 'auditor' }}
 
   checkov:
@@ -55,3 +56,4 @@ jobs:
       security-events: write # Required to upload SARIF results to GitHub Advanced Security.
     with:
       config-path: ${{ github.event_name == 'workflow_call' && inputs['checkov-config'] || './configs/checkov.yml' }}
+      advanced-security: ${{ github.event_name == 'workflow_call' && inputs['advanced-security'] || null }}
