@@ -16,6 +16,7 @@ run-name: "Checkov - ${{ github.actor }} - ${{ github.event_name == 'pull_reques
           Set to true to force enable, or false to force disable.
         required: false
         type: boolean
+        default: false
 
 permissions: {} # Deny token access by default; jobs grant only what they need.
 
@@ -37,9 +38,8 @@ jobs:
           directory: "."
           output_format: cli,sarif
           output_file_path: console,results.sarif
-      - name: Upload SARIF file
-        # Tri-state advanced-security: true=upload, false=skip, null=auto (true for public, false for private)
-        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+      - uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        if: (success() || failure()) && inputs['advanced-security']
         if: (success() || failure()) && (inputs['advanced-security'] == true || (!github.event.repository.private && inputs['advanced-security'] != false))
         with:
           sarif_file: results.sarif
