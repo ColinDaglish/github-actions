@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.6.0](https://github.com/datasciencecampus/github-actions/compare/v1.5.0...v1.6.0) (2026-09-09)
+
+
+### Features
+
+* add continue_on_error input for negative testing in Terraform quality workflow ([c58dc70](https://github.com/datasciencecampus/github-actions/commit/c58dc705d7eeb1bfd2a1db0e441774fd1c0a613d))
+* add continue-on-error option for terraform-dirs validation step ([05c2c29](https://github.com/datasciencecampus/github-actions/commit/05c2c29a2b4e8395d8f34e17239cd3fbe0ea0638))
+* add minimal Terraform configurations for sandbox, dev nonprod, stg prod, and prd prod environments ([af5b009](https://github.com/datasciencecampus/github-actions/commit/af5b0093701dfd17747b35fc0bbec0f50c4b7d23))
+* add reusable Terraform quality testing workflow with positive and negative test cases ([0b7f306](https://github.com/datasciencecampus/github-actions/commit/0b7f3060870d20676ec923df828b053d98426674))
+* add Terraform quality workflow with validation, formatting, and linting steps ([67063f0](https://github.com/datasciencecampus/github-actions/commit/67063f05fd7c1cdb1a9bd0a261ac0309737f1301))
+* add terraform-quality checks ([26dbbdc](https://github.com/datasciencecampus/github-actions/commit/26dbbdcaced032e26196237f659bee8924939339))
+* add TFLint configuration for AWS, Google, and Azure plugins with rules enabled ([2aa990b](https://github.com/datasciencecampus/github-actions/commit/2aa990b28bb82352934b323d27cfba89de8851ca))
+* add validation outputs for terraform-dirs and enhance test reporting ([983b562](https://github.com/datasciencecampus/github-actions/commit/983b5625a127c7276c72eb534e606896ef7d41ba))
+* enhance validation logic for Terraform quality checks with continue-on-error option ([08e9511](https://github.com/datasciencecampus/github-actions/commit/08e95115b40ef9a88d50903b2302da4fc1d5ab30))
+* organize test groups and update terraform version for quality checks ([d687a31](https://github.com/datasciencecampus/github-actions/commit/d687a3114dd3de7932fc0949c6bfb4f2ae09c89f))
+* specify terraform directories for positive tests in reusable workflow ([07c5b02](https://github.com/datasciencecampus/github-actions/commit/07c5b0242907c5b8c30445f2bb36c30da4876db5))
+* update positive test for specific terraform directory and enable formatting check ([7c85323](https://github.com/datasciencecampus/github-actions/commit/7c853230af44a3f93e039e742d5300abb502aec1))
+* update positive test to use 'terraform/05_test' directory ([c88c164](https://github.com/datasciencecampus/github-actions/commit/c88c1647d7172e5d46467f23e81e41e177972667))
+
+
+### Bug Fixes
+
+* adjust arguments for better performance. ([6ebb3e3](https://github.com/datasciencecampus/github-actions/commit/6ebb3e3fe8603d672aa03169376d69586ed31fb3))
+* correct failure conditions for negative tests in Terraform quality checks ([165fb05](https://github.com/datasciencecampus/github-actions/commit/165fb05f02c670368494fb2f8551789b9c20525f))
+* ensure negative test cases continue on error for better workflow resilience ([f395e03](https://github.com/datasciencecampus/github-actions/commit/f395e03431eb0634d3bd8f219ad8a12d8b77c354))
+* improve failure conditions for negative tests in Terraform quality checks ([4022eb1](https://github.com/datasciencecampus/github-actions/commit/4022eb157feba8947e1a8a8c7ddc29f39ce7f3fa))
+* update positive test references to use test directory instead of all directories ([155ad48](https://github.com/datasciencecampus/github-actions/commit/155ad48d4f1bf7faf8ffd0eb12ffef7ac1db443a))
+* update tflint setup action to version 6.3.1 for improved linting capabilities ([73deef2](https://github.com/datasciencecampus/github-actions/commit/73deef260ef518d4dccf4a86c67345c33a5c07df))
+* use bracket notation for terraform version ([838450a](https://github.com/datasciencecampus/github-actions/commit/838450aa7cc6c8816453f97ddb9aaf9319a1b503))
+
 ## [1.5.0](https://github.com/datasciencecampus/github-actions/compare/v1.4.0...v1.5.0) (2026-08-25)
 
 
