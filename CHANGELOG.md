@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.7.0](https://github.com/datasciencecampus/github-actions/compare/v1.6.0...v1.7.0) (2026-09-09)
+
+
+### Features
+
+* Add security-analysis orchestrator for zizmor and checkov scanning ([309539b](https://github.com/datasciencecampus/github-actions/commit/309539bb66c3ac327a41f2c753080de12366eadc))
+
+
+### Bug Fixes
+
+* simplify advanced-security condition in security-analysis workflow ([32f128f](https://github.com/datasciencecampus/github-actions/commit/32f128f2b9a91072aaf26affe3708a2f386fb914))
+* update advanced-security logic for clarity in security-analysis workflow ([1d37790](https://github.com/datasciencecampus/github-actions/commit/1d37790e7c72bbe6097018208736b7157256bd6a))
+
 ## [1.6.0](https://github.com/datasciencecampus/github-actions/compare/v1.5.0...v1.6.0) (2026-09-09)
 
 
