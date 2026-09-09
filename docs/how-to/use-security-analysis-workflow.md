@@ -85,11 +85,14 @@ The `zizmor-persona` input controls analysis strictness:
 
 ### Advanced Security behavior
 
-The `advanced-security` input controls SARIF upload (tri-state):
+The `advanced-security` input controls SARIF upload:
 
-- **Not specified** (default): Auto-enable for public repos, auto-disable for private repos
+- **Not specified** (default): Auto-detect based on repository type — enable for public repos, disable for private repos
 - **true**: Always upload SARIF results to GitHub Advanced Security
 - **false**: Never upload SARIF results
+
+> [!NOTE]
+> The `security-analysis.yml` orchestrator implements tri-state logic to maintain backward compatibility. When called from push/PR events, it auto-detects based on repository privacy. When called via `workflow_call`, it respects the caller's explicit override while auto-detecting if the input is omitted.
 
 ## Example customizations
 

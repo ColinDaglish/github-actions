@@ -176,7 +176,10 @@ Orchestrates GitHub Actions security analysis with `zizmor` and infrastructure s
 - `zizmor-config`: optional string. Path to zizmor config file. Defaults to `./configs/zizmor.yaml`.
 - `zizmor-persona`: optional string. Persona for zizmor analysis: `regular`, `pedantic`, or `auditor`. Defaults to `auditor`.
 - `checkov-config`: optional string. Path to checkov config file. Defaults to `./configs/checkov.yml`.
-- `advanced-security`: optional boolean. Upload SARIF results to GitHub Advanced Security. When omitted (default), auto-enables for public repositories and auto-disables for private repositories.
+- `advanced-security`: optional boolean. Upload SARIF results to GitHub Advanced Security. Tri-state behavior:
+  - Omitted (default): Auto-detect based on repository privacy (true for public, false for private)
+  - `true`: Always upload
+  - `false`: Never upload
 
 ### Security Analysis Behavior
 
@@ -189,8 +192,9 @@ Orchestrates GitHub Actions security analysis with `zizmor` and infrastructure s
 
 - **Default triggers**: On `push` and `pull_request` to `main`, uses organization defaults (zizmor persona: `auditor`, both tools enabled).
 - **Customization**: Callers can override config paths, persona, and advanced-security via `workflow_call` inputs.
+- **Tri-state logic**: `advanced-security` input is tri-state (omit = auto-detect, true = enable, false = disable). This logic is computed by the orchestrator and passed to child workflows.
 - **Concurrency**: Managed at the orchestrator level to prevent duplicate runs.
-- **Child workflows**: `zizmor.yml` and `checkov.yml` are reusable-only and should not be called directly.
+- **Child workflows**: `zizmor.yml` and `checkov.yml` are internal workflows and should be called only via `security-analysis.yml`.
 
 ## zizmor
 
@@ -206,7 +210,12 @@ GitHub Actions workflow security scanning using `zizmor`.
 
 - `config-path`: optional string. Path to zizmor config file. Defaults to `./configs/zizmor.yaml`.
 - `persona`: optional string. Analysis persona: `regular`, `pedantic`, or `auditor`. Defaults to `auditor`.
-- `advanced-security`: optional boolean. Upload SARIF results to GitHub Advanced Security. When omitted (default), auto-enables for public repositories and auto-disables for private repositories.
+- `advanced-security`: optional boolean. Upload SARIF results to GitHub Advanced Security. Defaults to `false`. Callers should pass the tri-state value computed by the orchestrator.
+
+### Zizmor Notes
+
+- This is an internal workflow; call via `security-analysis.yml` instead.
+- Tri-state logic (auto-detect based on repository privacy) is implemented in `security-analysis.yml`.
 
 ### Zizmor Behavior
 
@@ -233,7 +242,7 @@ Infrastructure-as-code and configuration security scanning using `checkov`.
 ### Checkov Inputs
 
 - `config-path`: optional string. Path to checkov config file. Defaults to `./configs/checkov.yml`.
-- `advanced-security`: optional boolean. Upload SARIF results to GitHub Advanced Security. When omitted (default), auto-enables for public repositories and auto-disables for private repositories.
+- `advanced-security`: optional boolean. Upload SARIF results to GitHub Advanced Security. Defaults to `false`. Callers should pass the tri-state value computed by the orchestrator.
 
 ### Checkov Behavior
 
@@ -241,6 +250,11 @@ Infrastructure-as-code and configuration security scanning using `checkov`.
 2. Runs checkov with the specified config file.
 3. Outputs results as CLI and SARIF formats.
 4. Uploads SARIF results (when advanced-security is enabled).
+
+### Checkov Notes
+
+- This is an internal workflow; call via `security-analysis.yml` instead.
+- Tri-state logic (auto-detect based on repository privacy) is implemented in `security-analysis.yml`.
 
 ### Checkov `GITHUB_TOKEN` Permissions
 
