@@ -41,7 +41,7 @@ jobs:
     uses: datasciencecampus/github-actions/.github/workflows/security-analysis.yml@<commit-sha>
 ```
 
-### Option 2: Custom configuration via workflow_call
+### Option 2: Custom configuration
 
 To customize config paths, persona, or advanced-security behavior:
 
@@ -53,7 +53,6 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  workflow_dispatch:
 
 jobs:
   security-analysis:
