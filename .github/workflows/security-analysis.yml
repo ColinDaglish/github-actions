@@ -47,7 +47,7 @@ jobs:
     with:
       config-path: ${{ github.event_name == 'workflow_call' && inputs['zizmor-config'] || './configs/zizmor.yaml' }}
       # Tri-state advanced-security: true=upload SARIF, false=skip upload, null=auto (true for public, false for private)
-      advanced-security: ${{ (github.event_name == 'workflow_call' && (inputs['advanced-security'] == true || (!github.event.repository.private && inputs['advanced-security'] != false))) || (github.event_name != 'workflow_call' && !github.event.repository.private) }}
+      advanced-security: ${{ inputs['advanced-security'] == true || (!github.event.repository.private && (github.event_name != 'workflow_call' || inputs['advanced-security'] != false)) }}
       persona: ${{ github.event_name == 'workflow_call' && inputs['zizmor-persona'] || 'auditor' }}
 
   checkov:
@@ -58,4 +58,4 @@ jobs:
     with:
       config-path: ${{ github.event_name == 'workflow_call' && inputs['checkov-config'] || './configs/checkov.yml' }}
       # Tri-state advanced-security: true=upload SARIF, false=skip upload, null=auto (true for public, false for private)
-      advanced-security: ${{ (github.event_name == 'workflow_call' && (inputs['advanced-security'] == true || (!github.event.repository.private && inputs['advanced-security'] != false))) || (github.event_name != 'workflow_call' && !github.event.repository.private) }}
+      advanced-security: ${{ inputs['advanced-security'] == true || (!github.event.repository.private && (github.event_name != 'workflow_call' || inputs['advanced-security'] != false)) }}
