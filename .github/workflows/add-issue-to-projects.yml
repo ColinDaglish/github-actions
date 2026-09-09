@@ -1,6 +1,6 @@
 name: Add Issue To Projects
 
-'on':
+"on":
   workflow_call:
     inputs:
       implementation_ref:

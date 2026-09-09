@@ -1,7 +1,7 @@
 name: GitHub Actions Security Analysis with zizmor 🌈
-run-name: ${{ github.workflow }} - ${{ github.actor }} pushed a change to ${{ github.ref_name }}
+run-name: "zizmor - ${{ github.actor }} - ${{ github.event_name == 'pull_request' && format('PR #{0}', github.event.pull_request.number) || github.ref_name }}"
 
-'on':
+"on":
   workflow_call:
     inputs:
       config-path:
@@ -10,30 +10,18 @@ run-name: ${{ github.workflow }} - ${{ github.actor }} pushed a change to ${{ gi
         type: string
         default: ./configs/zizmor.yaml
       advanced-security:
-        description: Upload SARIF results to GitHub Advanced Security.
+        description: >-
+          Upload SARIF results to GitHub Advanced Security.
+          Auto-enabled for public repositories, auto-disabled for private repositories.
+          Set to true to force enable, or false to force disable.
         required: false
         type: boolean
         default: false
-  pull_request:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
-    inputs:
-      config-path:
-        description: Path to the zizmor config file.
+      persona:
+        description: Persona for zizmor analysis (regular, pedantic, auditor).
         required: false
         type: string
-        default: ./configs/zizmor.yaml
-      advanced-security:
-        description: Upload SARIF results to GitHub Advanced Security.
-        required: false
-        type: boolean
-        default: false
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+        default: auditor
 
 permissions:
   contents: read
@@ -55,5 +43,6 @@ jobs:
       - name: Run zizmor
         uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v0.6.2
         with:
-          config: ${{ inputs.config-path || github.event.inputs.config-path || './configs/zizmor.yaml' }}
-          advanced-security: ${{ inputs.advanced-security || github.event.inputs.advanced-security == 'true' || false }}
+          config: ${{ inputs['config-path'] || './configs/zizmor.yaml' }}
+          advanced-security: ${{ inputs['advanced-security'] }}
+          persona: ${{ inputs.persona || 'auditor' }}

@@ -8,3 +8,4 @@ Background, rationale, and trade-offs.
 - [ADR-0002: Use workflow_dispatch instead of repository_dispatch](ADR-0002-workflow-dispatch-over-repository-dispatch.md)
 - [ADR-0003: Unified project_field_values input with optional field updates](ADR-0003-unified-project-field-values-input.md)
 - [ADR-0004: Separate reusable workflow pinning from dispatch ref](ADR-0004-separate-reusable-pinning-from-dispatch-ref.md)
+- [ADR-0005: Security workflow orchestration pattern](ADR-0005-security-workflow-orchestration.md)
