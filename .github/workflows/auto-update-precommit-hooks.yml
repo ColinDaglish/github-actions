@@ -89,7 +89,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pyyaml
+          pip install ruamel.yaml
 
       - name: Detect available updates
         id: detect
@@ -97,7 +97,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           python3 << 'EOF'
-          import yaml
+          from ruamel.yaml import YAML
           import json
           import subprocess
           import os
@@ -286,7 +286,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pyyaml
+          pip install ruamel.yaml
 
       - name: Apply cooldown filters
         id: cooldown
@@ -513,7 +513,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pyyaml
+          pip install ruamel.yaml
 
       - name: Update configs and create PR
         env:
@@ -528,10 +528,10 @@ jobs:
           python3 << 'EOF'
           import json
           import os
-          import yaml
           import subprocess
           import re
           from datetime import datetime, timezone
+          from ruamel.yaml import YAML
           
           # Load release info
           release_info = json.loads(os.environ['RELEASE_INFO'])
@@ -549,9 +549,13 @@ jobs:
               print("No updates to apply")
               exit(0)
           
-          # Load and update .pre-commit-config.yaml
+          # Load and update .pre-commit-config.yaml with comment preservation
+          yaml = YAML()
+          yaml.preserve_quotes = True
+          yaml.default_flow_style = False
+          
           with open('.pre-commit-config.yaml', 'r') as f:
-              config = yaml.safe_load(f)
+              config = yaml.load(f)
           
           # Update tracking file
           try:
@@ -569,6 +573,10 @@ jobs:
               if repo_url in update_map:
                   update = update_map[repo_url]
                   repo_entry['rev'] = update['new_sha']
+                  
+                  # Add version as inline comment (e.g., # frozen: v1.2.3)
+                  if hasattr(repo_entry, 'ca'):
+                      repo_entry.ca.comment[None] = [None, f' frozen: {update["new_version"]}']
                   
                   # Update tracking
                   if repo_url not in tracking['hooks']:
@@ -590,9 +598,9 @@ jobs:
                   
                   tracking['hooks'][repo_url]['last_updated'] = datetime.now(timezone.utc).isoformat() + 'Z'
           
-          # Write updated files
+          # Write updated files with comment preservation
           with open('.pre-commit-config.yaml', 'w') as f:
-              yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+              yaml.dump(config, f)
           
           with open('configs/precommit-update-tracking.json', 'w') as f:
               json.dump(tracking, f, indent=2)
