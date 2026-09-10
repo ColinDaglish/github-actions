@@ -165,6 +165,33 @@ jobs:
               
               return None
           
+          def resolve_sha_to_tag(repo_url: str, sha: str) -> Optional[str]:
+              """Resolve a commit SHA to its tag, if one exists."""
+              try:
+                  match = re.search(r'github\.com/([^/]+)/(.+?)(?:\.git)?$', repo_url)
+                  if not match:
+                      return None
+                  
+                  owner, repo = match.groups()
+                  
+                  # Try to get tags that point to this SHA
+                  cmd = [
+                      'gh', 'api', '--paginate',
+                      f'repos/{owner}/{repo}/tags',
+                      '-q', '.[] | select(.commit.sha == "{sha}") | .name'
+                  ]
+                  
+                  result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                  if result.returncode == 0 and result.stdout.strip():
+                      # Return the first matching tag
+                      tags = result.stdout.strip().split('\n')
+                      if tags and tags[0]:
+                          return tags[0]
+              except Exception as e:
+                  print(f"Warning: Could not resolve SHA to tag: {e}")
+              
+              return None
+          
           def parse_version(tag: str) -> Optional[Tuple[int, int, int]]:
               """Parse semantic version from tag (e.g., v1.2.3 -> (1, 2, 3))."""
               match = re.match(r'v?(\d+)\.(\d+)\.(\d+)', tag)
@@ -192,6 +219,13 @@ jobs:
               config = yaml.safe_load(f)
           
           updates = []
+          # Load tracking data to get current version information
+          tracking_data = {}
+          try:
+              with open('configs/precommit-update-tracking.json', 'r') as f:
+                  tracking_data = json.load(f).get('hooks', {})
+          except FileNotFoundError:
+              pass
           
           for repo_entry in config.get('repos', []):
               repo_url = repo_entry.get('repo')
@@ -208,13 +242,20 @@ jobs:
               if release_info:
                   latest_tag, latest_sha = release_info
                   if latest_sha != current_sha:
-                      # Try to determine old version from config comments if available
-                      hooks_section = repo_entry.get('hooks', [])
+                      # Determine old version from tracking file or by resolving the SHA
                       old_version = None
                       
-                      # Look for version comment in YAML (may not be easily accessible)
-                      # For now, we'll extract from tag
-                      old_version = current_sha[:7]
+                      # First, try to get from tracking file
+                      if repo_url in tracking_data:
+                          old_version = tracking_data[repo_url].get('current_version')
+                      
+                      # If not in tracking, try to resolve the SHA to its tag
+                      if not old_version:
+                          old_version = resolve_sha_to_tag(repo_url, current_sha)
+                      
+                      # If still no version, use the SHA (fallback for untagged repos)
+                      if not old_version:
+                          old_version = current_sha[:7]
                       
                       updates.append({
                           'repo': repo_url,
