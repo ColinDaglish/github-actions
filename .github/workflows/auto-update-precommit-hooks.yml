@@ -142,29 +142,6 @@ jobs:
               
               return None
           
-          def get_latest_commit_sha(repo_url: str, branch: str = 'HEAD') -> Optional[str]:
-              """Fetch latest commit SHA from a repository."""
-              try:
-                  match = re.search(r'github\.com/([^/]+)/(.+?)(?:\.git)?$', repo_url)
-                  if not match:
-                      return None
-                  
-                  owner, repo = match.groups()
-                  
-                  cmd = [
-                      'gh', 'api', '--paginate',
-                      f'repos/{owner}/{repo}/commits',
-                      '-q', '.[0].sha'
-                  ]
-                  
-                  result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-                  if result.returncode == 0 and result.stdout.strip():
-                      return result.stdout.strip()
-              except Exception as e:
-                  print(f"Warning: Error fetching latest commit for {repo_url}: {e}")
-              
-              return None
-          
           def resolve_sha_to_tag(repo_url: str, sha: str) -> Optional[str]:
               """Resolve a commit SHA to its tag, if one exists."""
               try:
@@ -236,7 +213,8 @@ jobs:
               
               print(f"Checking updates for: {repo_url}")
               
-              # Try to get latest release first
+              # Only check tagged releases (Dependabot behavior)
+              # Skips repositories without semantic versioning
               release_info = get_latest_release(repo_url)
               
               if release_info:
@@ -268,19 +246,9 @@ jobs:
                       })
                       print(f"  Update available: {old_version} -> {latest_tag}")
               else:
-                  # Fall back to latest commit if no releases
-                  latest_sha = get_latest_commit_sha(repo_url)
-                  if latest_sha and latest_sha != current_sha:
-                      print(f"  Update available (commit): {current_sha[:7]} -> {latest_sha[:7]}")
-                      updates.append({
-                          'repo': repo_url,
-                          'old_sha': current_sha,
-                          'new_sha': latest_sha,
-                          'old_version': current_sha[:7],
-                          'new_version': latest_sha[:7],
-                          'semver_level': 'patch',  # Default to patch for commits
-                          'commit_range': f'{current_sha}...{latest_sha}'
-                      })
+                  # No tagged releases found - skip this repo (Dependabot-aligned behavior)
+                  # This ensures we only track semantic versioned hooks
+                  print(f"  ⊘ Skipped: No tagged releases found (only tagged versions are tracked, like Dependabot)")
           
           # Output results
           if updates:
