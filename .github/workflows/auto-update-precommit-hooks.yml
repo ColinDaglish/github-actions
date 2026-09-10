@@ -235,6 +235,11 @@ jobs:
                       if not old_version:
                           old_version = current_sha[:7]
                       
+                      # Skip if version hasn't actually changed (SHA may differ but tag is same)
+                      if old_version == latest_tag:
+                          print(f"  ⊘ Skipped: Version unchanged ({old_version})")
+                          continue
+                      
                       updates.append({
                           'repo': repo_url,
                           'old_sha': current_sha,
