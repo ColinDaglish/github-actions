@@ -588,7 +588,7 @@ jobs:
               with open('configs/precommit-update-tracking.json', 'r') as f:
                   tracking = json.load(f)
           except FileNotFoundError:
-              tracking = {'last_updated': datetime.utcnow().isoformat() + 'Z', 'hooks': {}}
+              tracking = {'last_updated': datetime.now(timezone.utc).isoformat() + 'Z', 'hooks': {}}
           
           # Create a mapping of repo URLs to new SHAs
           update_map = {update['repo']: update for update in release_info}
@@ -606,9 +606,9 @@ jobs:
                           'current_sha': update['new_sha'],
                           'current_version': update['new_version'],
                           'semver_levels': {
-                              'major': datetime.utcnow().isoformat() + 'Z',
-                              'minor': datetime.utcnow().isoformat() + 'Z',
-                              'patch': datetime.utcnow().isoformat() + 'Z'
+                              'major': datetime.now(timezone.utc).isoformat() + 'Z',
+                              'minor': datetime.now(timezone.utc).isoformat() + 'Z',
+                              'patch': datetime.now(timezone.utc).isoformat() + 'Z'
                           }
                       }
                   else:
@@ -616,9 +616,9 @@ jobs:
                       tracking['hooks'][repo_url]['current_sha'] = update['new_sha']
                       tracking['hooks'][repo_url]['current_version'] = update['new_version']
                       if semver != 'unknown':
-                          tracking['hooks'][repo_url]['semver_levels'][semver] = datetime.utcnow().isoformat() + 'Z'
+                          tracking['hooks'][repo_url]['semver_levels'][semver] = datetime.now(timezone.utc).isoformat() + 'Z'
                   
-                  tracking['hooks'][repo_url]['last_updated'] = datetime.utcnow().isoformat() + 'Z'
+                  tracking['hooks'][repo_url]['last_updated'] = datetime.now(timezone.utc).isoformat() + 'Z'
           
           # Write updated files
           with open('.pre-commit-config.yaml', 'w') as f:
@@ -743,18 +743,26 @@ jobs:
           pr_body = generate_pr_body(release_info, skipped, cooldown_config)
           
           # Create branch and commit
-          branch_name = f"chore/precommit-updates-{datetime.utcnow().strftime('%Y%m%d')}"
+          branch_name = f"chore/precommit-updates-{datetime.now(timezone.utc).strftime('%Y%m%d')}"
           
           subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
           subprocess.run(['git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], check=True)
+          
+          # Configure git to use GITHUB_TOKEN for authentication (secure alternative to persist-credentials)
+          github_token = os.environ.get('GITHUB_TOKEN', '')
+          subprocess.run(
+              ['git', 'config', '--global', 'url.https://x-access-token:' + github_token + '@github.com/.insteadOf', 'https://github.com/'],
+              check=True
+          )
+          
           subprocess.run(['git', 'checkout', '-b', branch_name], check=True)
           subprocess.run(['git', 'add', '.pre-commit-config.yaml', 'configs/precommit-update-tracking.json'], check=True)
           
           commit_msg = f"chore(pre-commit): auto-update hooks\n\nUpdated {len(release_info)} pre-commit hook(s)"
           subprocess.run(['git', 'commit', '-m', commit_msg], check=True)
           
-          # Push branch
-          subprocess.run(['git', 'push', '-u', 'origin', branch_name], check=True, env={**os.environ, 'GIT_TRACE': '1'})
+          # Push branch (git authentication already configured via credential helper)
+          subprocess.run(['git', 'push', '-u', 'origin', branch_name], check=True)
           
           # Create PR using GitHub CLI
           pr_result = subprocess.run(
