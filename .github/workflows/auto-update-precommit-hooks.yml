@@ -552,6 +552,22 @@ jobs:
                   update = update_map[repo_url]
                   repo_entry['rev'] = update['new_sha']
                   
+                  # Update inline comment with frozen version
+                  try:
+                      from ruamel.yaml.comments import CommentedMap
+                      if hasattr(repo_entry, 'ca'):
+                          # Update the comment on the 'rev' key with the new version
+                          repo_entry.ca.items['rev'] = [None, None, None, f' frozen: {update["new_version"]}']
+                  except Exception as e:
+                      # Comment update failed - remove the stale comment entirely
+                      # Better to have no comment than an incorrect frozen version tag
+                      print(f"Warning: Could not update comment for {repo_url}, removing stale comment: {e}")
+                      try:
+                          if hasattr(repo_entry, 'ca') and 'rev' in repo_entry.ca.items:
+                              repo_entry.ca.items['rev'] = [None, None, None, None]
+                      except:
+                          pass  # If we can't even remove it, continue without comment
+                  
                   # Update tracking
                   if repo_url not in tracking['hooks']:
                       tracking['hooks'][repo_url] = {
