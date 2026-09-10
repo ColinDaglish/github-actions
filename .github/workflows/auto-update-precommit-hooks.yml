@@ -105,7 +105,7 @@ jobs:
           from typing import Optional, Tuple, Dict, Any
           
           def get_latest_release(repo_url: str) -> Optional[Tuple[str, str]]:
-              """Fetch latest release tag and SHA from GitHub API."""
+              """Fetch latest release tag and resolve to immutable commit SHA from GitHub API."""
               try:
                   # Extract owner/repo from URL
                   match = re.search(r'github\.com/([^/]+)/(.+?)(?:\.git)?$', repo_url)
@@ -115,18 +115,28 @@ jobs:
                   
                   owner, repo = match.groups()
                   
-                  # Try to get the latest release
+                  # Get the latest release tag (immutable)
                   cmd = [
                       'gh', 'api', '--paginate',
                       f'repos/{owner}/{repo}/releases',
-                      '-q', '.[0] | {tag: .tag_name, sha: .target_commitish}'
+                      '-q', '.[0].tag_name'
                   ]
                   
                   result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
                   if result.returncode == 0 and result.stdout.strip():
-                      data = json.loads(result.stdout)
-                      if data.get('tag') and data.get('sha'):
-                          return (data['tag'], data['sha'])
+                      tag = result.stdout.strip()
+                      
+                      # Resolve the tag to its immutable commit SHA through the commits API
+                      commit_cmd = [
+                          'gh', 'api', '--paginate',
+                          f'repos/{owner}/{repo}/commits/{tag}',
+                          '-q', '.sha'
+                      ]
+                      
+                      commit_result = subprocess.run(commit_cmd, capture_output=True, text=True, timeout=10)
+                      if commit_result.returncode == 0 and commit_result.stdout.strip():
+                          sha = commit_result.stdout.strip()
+                          return (tag, sha)
               except Exception as e:
                   print(f"Warning: Error fetching latest release for {repo_url}: {e}")
               
