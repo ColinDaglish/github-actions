@@ -747,24 +747,22 @@ jobs:
           
           subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
           subprocess.run(['git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], check=True)
-          
-          # Configure git to use GITHUB_TOKEN for authentication via HTTP header
-          # This is more reliable than URL rewriting in GitHub Actions environments
-          github_token = os.environ.get('GITHUB_TOKEN', '')
-          subprocess.run(
-              ['git', 'config', '--global', 'http.extraheader', f'Authorization: token {github_token}'],
-              check=True
-          )
-          
           subprocess.run(['git', 'checkout', '-b', branch_name], check=True)
           subprocess.run(['git', 'add', '.pre-commit-config.yaml', 'configs/precommit-update-tracking.json'], check=True)
           
           commit_msg = f"chore(pre-commit): auto-update hooks\n\nUpdated {len(release_info)} pre-commit hook(s)"
           subprocess.run(['git', 'commit', '-m', commit_msg], check=True)
           
-          # Push branch with force-with-lease to handle existing remote branch safely
-          # (useful when multiple runs occur on the same day during testing)
-          subprocess.run(['git', 'push', '--force-with-lease', '-u', 'origin', branch_name], check=True)
+          # Push branch using token in URL (temporary, safe because token is already exposed via env)
+          # Get repository info from environment
+          repo = os.environ.get('GITHUB_REPOSITORY', '')
+          github_token = os.environ.get('GITHUB_TOKEN', '')
+          remote_url = f'https://x-access-token:{github_token}@github.com/{repo}.git'
+          subprocess.run(
+              ['git', 'push', '--force-with-lease', '-u', remote_url, branch_name],
+              check=True,
+              env={**os.environ, 'GIT_TRACE': '0'}  # Disable tracing to avoid logging token
+          )
           
           # Create PR using GitHub CLI
           pr_result = subprocess.run(
