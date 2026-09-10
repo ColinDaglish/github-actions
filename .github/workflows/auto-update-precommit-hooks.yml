@@ -83,7 +83,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
 
@@ -139,29 +139,6 @@ jobs:
                           return (tag, sha)
               except Exception as e:
                   print(f"Warning: Error fetching latest release for {repo_url}: {e}")
-              
-              return None
-          
-          def get_latest_commit_sha(repo_url: str, branch: str = 'HEAD') -> Optional[str]:
-              """Fetch latest commit SHA from a repository."""
-              try:
-                  match = re.search(r'github\.com/([^/]+)/(.+?)(?:\.git)?$', repo_url)
-                  if not match:
-                      return None
-                  
-                  owner, repo = match.groups()
-                  
-                  cmd = [
-                      'gh', 'api', '--paginate',
-                      f'repos/{owner}/{repo}/commits',
-                      '-q', '.[0].sha'
-                  ]
-                  
-                  result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-                  if result.returncode == 0 and result.stdout.strip():
-                      return result.stdout.strip()
-              except Exception as e:
-                  print(f"Warning: Error fetching latest commit for {repo_url}: {e}")
               
               return None
           
@@ -236,7 +213,8 @@ jobs:
               
               print(f"Checking updates for: {repo_url}")
               
-              # Try to get latest release first
+              # Only check tagged releases (Dependabot behavior)
+              # Skips repositories without semantic versioning
               release_info = get_latest_release(repo_url)
               
               if release_info:
@@ -257,6 +235,11 @@ jobs:
                       if not old_version:
                           old_version = current_sha[:7]
                       
+                      # Skip if version hasn't actually changed (SHA may differ but tag is same)
+                      if old_version == latest_tag:
+                          print(f"  ⊘ Skipped: Version unchanged ({old_version})")
+                          continue
+                      
                       updates.append({
                           'repo': repo_url,
                           'old_sha': current_sha,
@@ -268,19 +251,9 @@ jobs:
                       })
                       print(f"  Update available: {old_version} -> {latest_tag}")
               else:
-                  # Fall back to latest commit if no releases
-                  latest_sha = get_latest_commit_sha(repo_url)
-                  if latest_sha and latest_sha != current_sha:
-                      print(f"  Update available (commit): {current_sha[:7]} -> {latest_sha[:7]}")
-                      updates.append({
-                          'repo': repo_url,
-                          'old_sha': current_sha,
-                          'new_sha': latest_sha,
-                          'old_version': current_sha[:7],
-                          'new_version': latest_sha[:7],
-                          'semver_level': 'patch',  # Default to patch for commits
-                          'commit_range': f'{current_sha}...{latest_sha}'
-                      })
+                  # No tagged releases found - skip this repo (Dependabot-aligned behavior)
+                  # This ensures we only track semantic versioned hooks
+                  print(f"  ⊘ Skipped: No tagged releases found (only tagged versions are tracked, like Dependabot)")
           
           # Output results
           if updates:
@@ -312,13 +285,13 @@ jobs:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
 
       - name: Install dependencies
         run: |
-          pip install pyyaml
+          pip install ruamel.yaml
 
       - name: Apply cooldown filters
         id: cooldown
@@ -421,7 +394,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
 
@@ -539,19 +512,20 @@ jobs:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
 
       - name: Install dependencies
         run: |
-          pip install pyyaml
+          pip install ruamel.yaml
 
       - name: Update configs and create PR
         env:
           RELEASE_INFO: ${{ needs.fetch-release-info.outputs.release_info }}
           SKIPPED_UPDATES: ${{ needs.apply-cooldown.outputs.skipped_updates }}
           GITHUB_TOKEN: ${{ github.token }}
+          FORCE_UPDATE: ${{ github.event.inputs.force_update || false }}
           COOLDOWN_MAJOR: ${{ github.event.inputs.cooldown_major_days || '28' }}
           COOLDOWN_MINOR: ${{ github.event.inputs.cooldown_minor_days || '14' }}
           COOLDOWN_PATCH: ${{ github.event.inputs.cooldown_patch_days || '7' }}
@@ -559,14 +533,15 @@ jobs:
           python3 << 'EOF'
           import json
           import os
-          import yaml
           import subprocess
           import re
           from datetime import datetime, timezone
+          from ruamel.yaml import YAML
           
           # Load release info
           release_info = json.loads(os.environ['RELEASE_INFO'])
           skipped = json.loads(os.environ['SKIPPED_UPDATES'] or '[]')
+          force_update = os.environ.get('FORCE_UPDATE', 'false').lower() == 'true'
           
           cooldown_config = {
               'major': int(os.environ['COOLDOWN_MAJOR']),
@@ -579,16 +554,20 @@ jobs:
               print("No updates to apply")
               exit(0)
           
-          # Load and update .pre-commit-config.yaml
+          # Load and update .pre-commit-config.yaml with comment preservation
+          yaml = YAML()
+          yaml.preserve_quotes = True
+          yaml.default_flow_style = False
+          
           with open('.pre-commit-config.yaml', 'r') as f:
-              config = yaml.safe_load(f)
+              config = yaml.load(f)
           
           # Update tracking file
           try:
               with open('configs/precommit-update-tracking.json', 'r') as f:
                   tracking = json.load(f)
           except FileNotFoundError:
-              tracking = {'last_updated': datetime.utcnow().isoformat() + 'Z', 'hooks': {}}
+              tracking = {'last_updated': datetime.now(timezone.utc).isoformat() + 'Z', 'hooks': {}}
           
           # Create a mapping of repo URLs to new SHAs
           update_map = {update['repo']: update for update in release_info}
@@ -600,15 +579,31 @@ jobs:
                   update = update_map[repo_url]
                   repo_entry['rev'] = update['new_sha']
                   
+                  # Update inline comment with frozen version
+                  try:
+                      from ruamel.yaml.comments import CommentedMap
+                      if hasattr(repo_entry, 'ca'):
+                          # Update the comment on the 'rev' key with the new version
+                          repo_entry.ca.items['rev'] = [None, None, None, f' frozen: {update["new_version"]}']
+                  except Exception as e:
+                      # Comment update failed - remove the stale comment entirely
+                      # Better to have no comment than an incorrect frozen version tag
+                      print(f"Warning: Could not update comment for {repo_url}, removing stale comment: {e}")
+                      try:
+                          if hasattr(repo_entry, 'ca') and 'rev' in repo_entry.ca.items:
+                              repo_entry.ca.items['rev'] = [None, None, None, None]
+                      except:
+                          pass  # If we can't even remove it, continue without comment
+                  
                   # Update tracking
                   if repo_url not in tracking['hooks']:
                       tracking['hooks'][repo_url] = {
                           'current_sha': update['new_sha'],
                           'current_version': update['new_version'],
                           'semver_levels': {
-                              'major': datetime.utcnow().isoformat() + 'Z',
-                              'minor': datetime.utcnow().isoformat() + 'Z',
-                              'patch': datetime.utcnow().isoformat() + 'Z'
+                              'major': datetime.now(timezone.utc).isoformat() + 'Z',
+                              'minor': datetime.now(timezone.utc).isoformat() + 'Z',
+                              'patch': datetime.now(timezone.utc).isoformat() + 'Z'
                           }
                       }
                   else:
@@ -616,13 +611,13 @@ jobs:
                       tracking['hooks'][repo_url]['current_sha'] = update['new_sha']
                       tracking['hooks'][repo_url]['current_version'] = update['new_version']
                       if semver != 'unknown':
-                          tracking['hooks'][repo_url]['semver_levels'][semver] = datetime.utcnow().isoformat() + 'Z'
+                          tracking['hooks'][repo_url]['semver_levels'][semver] = datetime.now(timezone.utc).isoformat() + 'Z'
                   
-                  tracking['hooks'][repo_url]['last_updated'] = datetime.utcnow().isoformat() + 'Z'
+                  tracking['hooks'][repo_url]['last_updated'] = datetime.now(timezone.utc).isoformat() + 'Z'
           
-          # Write updated files
+          # Write updated files with comment preservation
           with open('.pre-commit-config.yaml', 'w') as f:
-              yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+              yaml.dump(config, f)
           
           with open('configs/precommit-update-tracking.json', 'w') as f:
               json.dump(tracking, f, indent=2)
@@ -635,7 +630,7 @@ jobs:
                   return match.group(1)
               return repo_url
           
-          def generate_pr_body(updates: list, skipped: list, cooldown_config: dict) -> str:
+          def generate_pr_body(updates: list, skipped: list, cooldown_config: dict, force_update: bool = False) -> str:
               """Generate comprehensive PR body."""
               now = datetime.now(timezone.utc)
               
@@ -718,15 +713,24 @@ jobs:
                   lines.append("> Some updates have cooldown periods less than 7 days, which may increase vulnerability to supply chain attacks. Longer cooldown periods provide greater stability and more time to detect potential supply chain issues.")
                   lines.append("")
               
-              # Cooldown summary
-              lines.append("### Cooldown Periods Applied")
-              lines.append("")
-              lines.append(f"- **Major versions**: {cooldown_config['major']} days")
-              lines.append(f"- **Minor versions**: {cooldown_config['minor']} days")
-              lines.append(f"- **Patch versions**: {cooldown_config['patch']} days")
-              lines.append("")
+              # Cooldown summary (only show if not overridden by force_update)
+              if force_update:
+                  lines.append("### Update Policy")
+                  lines.append("")
+                  lines.append("> [!NOTE]")
+                  lines.append("> **Force Update Override**")
+                  lines.append(">")
+                  lines.append("> Cooldown periods were bypassed via `force_update: true`. All eligible updates were applied regardless of cooldown state.")
+                  lines.append("")
+              else:
+                  lines.append("### Cooldown Periods Applied")
+                  lines.append("")
+                  lines.append(f"- **Major versions**: {cooldown_config['major']} days")
+                  lines.append(f"- **Minor versions**: {cooldown_config['minor']} days")
+                  lines.append(f"- **Patch versions**: {cooldown_config['patch']} days")
+                  lines.append("")
               
-              # Skipped updates
+              # Skipped updates (only relevant if not force_update)
               if skipped:
                   lines.append("### Skipped Updates")
                   lines.append("")
@@ -740,10 +744,10 @@ jobs:
               return "\n".join(lines)
           
           # Generate PR body
-          pr_body = generate_pr_body(release_info, skipped, cooldown_config)
+          pr_body = generate_pr_body(release_info, skipped, cooldown_config, force_update)
           
           # Create branch and commit
-          branch_name = f"chore/precommit-updates-{datetime.utcnow().strftime('%Y%m%d')}"
+          branch_name = f"chore/precommit-updates-{datetime.now(timezone.utc).strftime('%Y%m%d')}"
           
           subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
           subprocess.run(['git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], check=True)
@@ -753,8 +757,15 @@ jobs:
           commit_msg = f"chore(pre-commit): auto-update hooks\n\nUpdated {len(release_info)} pre-commit hook(s)"
           subprocess.run(['git', 'commit', '-m', commit_msg], check=True)
           
+          # Use GitHub CLI to authenticate git for pushing
+          # gh auth setup-git configures git to use gh's stored credentials
+          subprocess.run(['gh', 'auth', 'setup-git'], check=True)
+          
           # Push branch
-          subprocess.run(['git', 'push', '-u', 'origin', branch_name], check=True, env={**os.environ, 'GIT_TRACE': '1'})
+          subprocess.run(
+              ['git', 'push', '--force-with-lease', '-u', 'origin', branch_name],
+              check=True
+          )
           
           # Create PR using GitHub CLI
           pr_result = subprocess.run(

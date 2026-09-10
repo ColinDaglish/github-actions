@@ -1,11 +1,11 @@
 repos:
-  - repo: https://github.com/zizmorcore/zizmor-pre-commit
-    rev: 451b56af716f9f0d0c2b816503a3fd0cf8b036fa  # frozen: v1.29.0
-    hooks:
-      - id: zizmor
-        args: [--fix, --persona=pedantic]
-  - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: 3db014c16a9d31997ab8c07a4d61fcce936c8f0d  # frozen: v4.4.0
-    hooks:
-      - id: conventional-pre-commit
-        stages: [commit-msg]
+- repo: https://github.com/zizmorcore/zizmor-pre-commit
+  rev: fa412071e4f5d44d44f9e365f4676f9df92456a2
+  hooks:
+  - id: zizmor
+    args: [--fix, --persona=pedantic]
+- repo: https://github.com/compilerla/conventional-pre-commit
+  rev: 3db014c16a9d31997ab8c07a4d61fcce936c8f0d    # frozen: v4.4.0
+  hooks:
+  - id: conventional-pre-commit
+    stages: [commit-msg]
