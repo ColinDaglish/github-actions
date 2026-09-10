@@ -627,41 +627,13 @@ jobs:
           with open('configs/precommit-update-tracking.json', 'w') as f:
               json.dump(tracking, f, indent=2)
           
-          # Generate PR body
-          pr_body = generate_pr_body(release_info, skipped, cooldown_config)
-          
-          # Create branch and commit
-          branch_name = f"chore/precommit-updates-{datetime.utcnow().strftime('%Y%m%d')}"
-          
-          subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
-          subprocess.run(['git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], check=True)
-          subprocess.run(['git', 'checkout', '-b', branch_name], check=True)
-          subprocess.run(['git', 'add', '.pre-commit-config.yaml', 'configs/precommit-update-tracking.json'], check=True)
-          
-          commit_msg = f"chore(pre-commit): auto-update hooks\n\nUpdated {len(release_info)} pre-commit hook(s)"
-          subprocess.run(['git', 'commit', '-m', commit_msg], check=True)
-          
-          # Push branch
-          subprocess.run(['git', 'push', '-u', 'origin', branch_name], check=True, env={**os.environ, 'GIT_TRACE': '1'})
-          
-          # Create PR using GitHub CLI
-          pr_result = subprocess.run(
-              [
-                  'gh', 'pr', 'create',
-                  '--base', 'main',
-                  '--head', branch_name,
-                  '--title', f'chore(pre-commit): auto-update hooks ({len(release_info)} update(s))',
-                  '--body', pr_body,
-              ],
-              capture_output=True,
-              text=True
-          )
-          
-          if pr_result.returncode == 0:
-              print(f"✓ Pull request created: {pr_result.stdout.strip()}")
-          else:
-              print(f"Error creating PR: {pr_result.stderr}")
-              exit(1)
+          # Define helper functions for PR generation
+          def extract_hook_name(repo_url: str) -> str:
+              """Extract hook name from repository URL."""
+              match = re.search(r'/([^/]+?)(?:\.git)?$', repo_url)
+              if match:
+                  return match.group(1)
+              return repo_url
           
           def generate_pr_body(updates: list, skipped: list, cooldown_config: dict) -> str:
               """Generate comprehensive PR body."""
@@ -731,17 +703,19 @@ jobs:
               # Check for major updates
               has_major = any(u['semver_level'] == 'major' for u in updates)
               if has_major:
-                  lines.append("### ⚠️ Major Version Updates")
-                  lines.append("")
-                  lines.append("Major versions may introduce breaking changes. Reviewers should examine the release notes and commit history carefully.")
+                  lines.append("> [!WARNING]")
+                  lines.append("> Major Version Updates")
+                  lines.append(">")
+                  lines.append("> Major versions may introduce breaking changes. Reviewers should examine the release notes and commit history carefully.")
                   lines.append("")
               
               # Check for short cooldown
               has_short_cooldown = any(u['cooldown_applied'].get(u['semver_level'], 0) < 7 for u in updates)
               if has_short_cooldown:
-                  lines.append("### ⚠️ Short Cooldown Period")
-                  lines.append("")
-                  lines.append("Some updates have cooldown periods less than 7 days, which may increase vulnerability to supply chain attacks. Longer cooldown periods provide greater stability and more time to detect potential supply chain issues.")
+                  lines.append("> [!WARNING]")
+                  lines.append("> Short Cooldown Period")
+                  lines.append(">")
+                  lines.append("> Some updates have cooldown periods less than 7 days, which may increase vulnerability to supply chain attacks. Longer cooldown periods provide greater stability and more time to detect potential supply chain issues.")
                   lines.append("")
               
               # Cooldown summary
@@ -765,12 +739,41 @@ jobs:
               
               return "\n".join(lines)
           
-          def extract_hook_name(repo_url: str) -> str:
-              """Extract hook name from repository URL."""
-              match = re.search(r'/([^/]+?)(?:\.git)?$', repo_url)
-              if match:
-                  return match.group(1)
-              return repo_url
+          # Generate PR body
+          pr_body = generate_pr_body(release_info, skipped, cooldown_config)
+          
+          # Create branch and commit
+          branch_name = f"chore/precommit-updates-{datetime.utcnow().strftime('%Y%m%d')}"
+          
+          subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
+          subprocess.run(['git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], check=True)
+          subprocess.run(['git', 'checkout', '-b', branch_name], check=True)
+          subprocess.run(['git', 'add', '.pre-commit-config.yaml', 'configs/precommit-update-tracking.json'], check=True)
+          
+          commit_msg = f"chore(pre-commit): auto-update hooks\n\nUpdated {len(release_info)} pre-commit hook(s)"
+          subprocess.run(['git', 'commit', '-m', commit_msg], check=True)
+          
+          # Push branch
+          subprocess.run(['git', 'push', '-u', 'origin', branch_name], check=True, env={**os.environ, 'GIT_TRACE': '1'})
+          
+          # Create PR using GitHub CLI
+          pr_result = subprocess.run(
+              [
+                  'gh', 'pr', 'create',
+                  '--base', 'main',
+                  '--head', branch_name,
+                  '--title', f'chore(pre-commit): auto-update hooks ({len(release_info)} update(s))',
+                  '--body', pr_body,
+              ],
+              capture_output=True,
+              text=True
+          )
+          
+          if pr_result.returncode == 0:
+              print(f"✓ Pull request created: {pr_result.stdout.strip()}")
+          else:
+              print(f"Error creating PR: {pr_result.stderr}")
+              exit(1)
           EOF
 
   no-updates:
