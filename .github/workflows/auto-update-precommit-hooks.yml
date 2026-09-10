@@ -575,8 +575,14 @@ jobs:
                   repo_entry['rev'] = update['new_sha']
                   
                   # Add version as inline comment (e.g., # frozen: v1.2.3)
-                  if hasattr(repo_entry, 'ca'):
-                      repo_entry.ca.comment[None] = [None, f' frozen: {update["new_version"]}']
+                  try:
+                      if hasattr(repo_entry, 'ca') and repo_entry.ca is not None:
+                          if repo_entry.ca.comment is None:
+                              repo_entry.ca.comment = {}
+                          repo_entry.ca.comment[None] = [None, f' frozen: {update["new_version"]}']
+                  except Exception as e:
+                      # If comment fails, silently continue - comments are optional
+                      pass
                   
                   # Update tracking
                   if repo_url not in tracking['hooks']:
