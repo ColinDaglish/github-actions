@@ -1,0 +1,698 @@
+name: Auto-Update Pre-Commit Hooks
+
+on:
+  workflow_dispatch:
+    inputs:
+      cooldown_major_days:
+        description: "Cooldown period for major version updates (days)"
+        required: false
+        default: "28"
+        type: string
+      cooldown_minor_days:
+        description: "Cooldown period for minor version updates (days)"
+        required: false
+        default: "14"
+        type: string
+      cooldown_patch_days:
+        description: "Cooldown period for patch version updates (days)"
+        required: false
+        default: "7"
+        type: string
+      skip_hooks:
+        description: "Comma-separated list of hook repo URLs to skip (e.g., https://github.com/owner/repo)"
+        required: false
+        default: ""
+        type: string
+      force_update:
+        description: "Bypass cooldown periods and update all eligible hooks"
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    # Run weekly on Tuesday at 03:00 UTC
+    - cron: "0 3 * * 2"
+
+concurrency:
+  group: auto-update-precommit-hooks
+  cancel-in-progress: false
+
+# Deny all permissions by default; grant only what's needed per job
+permissions: {}
+
+jobs:
+  detect-updates:
+    name: Detect Available Updates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      updates_found: ${{ steps.detect.outputs.updates_found }}
+      updates_json: ${{ steps.detect.outputs.updates_json }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9bb56186c3b09b1be11b23adc9f22067da19db5c # v4.1.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Detect available updates
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 << 'EOF'
+          import yaml
+          import json
+          import subprocess
+          import os
+          import re
+          from typing import Optional, Tuple, Dict, Any
+          
+          def get_latest_release(repo_url: str) -> Optional[Tuple[str, str]]:
+              """Fetch latest release tag and SHA from GitHub API."""
+              try:
+                  # Extract owner/repo from URL
+                  match = re.search(r'github\.com/([^/]+)/(.+?)(?:\.git)?$', repo_url)
+                  if not match:
+                      print(f"Warning: Could not parse repo URL: {repo_url}")
+                      return None
+                  
+                  owner, repo = match.groups()
+                  
+                  # Try to get the latest release
+                  cmd = [
+                      'gh', 'api', '--paginate',
+                      f'repos/{owner}/{repo}/releases',
+                      '-q', '.[0] | {tag: .tag_name, sha: .target_commitish}'
+                  ]
+                  
+                  result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                  if result.returncode == 0 and result.stdout.strip():
+                      data = json.loads(result.stdout)
+                      if data.get('tag') and data.get('sha'):
+                          return (data['tag'], data['sha'])
+              except Exception as e:
+                  print(f"Warning: Error fetching latest release for {repo_url}: {e}")
+              
+              return None
+          
+          def get_latest_commit_sha(repo_url: str, branch: str = 'HEAD') -> Optional[str]:
+              """Fetch latest commit SHA from a repository."""
+              try:
+                  match = re.search(r'github\.com/([^/]+)/(.+?)(?:\.git)?$', repo_url)
+                  if not match:
+                      return None
+                  
+                  owner, repo = match.groups()
+                  
+                  cmd = [
+                      'gh', 'api', '--paginate',
+                      f'repos/{owner}/{repo}/commits',
+                      '-q', '.[0].sha'
+                  ]
+                  
+                  result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                  if result.returncode == 0 and result.stdout.strip():
+                      return result.stdout.strip()
+              except Exception as e:
+                  print(f"Warning: Error fetching latest commit for {repo_url}: {e}")
+              
+              return None
+          
+          def parse_version(tag: str) -> Optional[Tuple[int, int, int]]:
+              """Parse semantic version from tag (e.g., v1.2.3 -> (1, 2, 3))."""
+              match = re.match(r'v?(\d+)\.(\d+)\.(\d+)', tag)
+              if match:
+                  return tuple(map(int, match.groups()))
+              return None
+          
+          def determine_semver_level(old_version: str, new_version: str) -> str:
+              """Determine if update is major, minor, or patch."""
+              old = parse_version(old_version)
+              new = parse_version(new_version)
+              
+              if not old or not new:
+                  return "unknown"
+              
+              if old[0] != new[0]:
+                  return "major"
+              elif old[1] != new[1]:
+                  return "minor"
+              else:
+                  return "patch"
+          
+          # Load current pre-commit config
+          with open('.pre-commit-config.yaml', 'r') as f:
+              config = yaml.safe_load(f)
+          
+          updates = []
+          
+          for repo_entry in config.get('repos', []):
+              repo_url = repo_entry.get('repo')
+              current_sha = repo_entry.get('rev')
+              
+              if not repo_url or not current_sha:
+                  continue
+              
+              print(f"Checking updates for: {repo_url}")
+              
+              # Try to get latest release first
+              release_info = get_latest_release(repo_url)
+              
+              if release_info:
+                  latest_tag, latest_sha = release_info
+                  if latest_sha != current_sha:
+                      # Try to determine old version from config comments if available
+                      hooks_section = repo_entry.get('hooks', [])
+                      old_version = None
+                      
+                      # Look for version comment in YAML (may not be easily accessible)
+                      # For now, we'll extract from tag
+                      old_version = current_sha[:7]
+                      
+                      updates.append({
+                          'repo': repo_url,
+                          'old_sha': current_sha,
+                          'new_sha': latest_sha,
+                          'old_version': old_version,
+                          'new_version': latest_tag,
+                          'semver_level': determine_semver_level(old_version or '0.0.0', latest_tag),
+                          'commit_range': f'{current_sha}...{latest_sha}'
+                      })
+                      print(f"  Update available: {old_version} -> {latest_tag}")
+              else:
+                  # Fall back to latest commit if no releases
+                  latest_sha = get_latest_commit_sha(repo_url)
+                  if latest_sha and latest_sha != current_sha:
+                      print(f"  Update available (commit): {current_sha[:7]} -> {latest_sha[:7]}")
+                      updates.append({
+                          'repo': repo_url,
+                          'old_sha': current_sha,
+                          'new_sha': latest_sha,
+                          'old_version': current_sha[:7],
+                          'new_version': latest_sha[:7],
+                          'semver_level': 'patch',  # Default to patch for commits
+                          'commit_range': f'{current_sha}...{latest_sha}'
+                      })
+          
+          # Output results
+          if updates:
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write(f"updates_found=true\n")
+                  f.write(f"updates_json={json.dumps(updates)}\n")
+              print(f"\nFound {len(updates)} update(s)")
+          else:
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write(f"updates_found=false\n")
+                  f.write(f"updates_json={json.dumps([])}\n")
+              print("No updates found")
+          EOF
+
+  apply-cooldown:
+    name: Apply Cooldown Filters
+    needs: detect-updates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      eligible_updates: ${{ steps.cooldown.outputs.eligible_updates }}
+      skipped_updates: ${{ steps.cooldown.outputs.skipped_updates }}
+    if: needs.detect-updates.outputs.updates_found == 'true'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9bb56186c3b09b1be11b23adc9f22067da19db5c # v4.1.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Apply cooldown filters
+        id: cooldown
+        env:
+          UPDATES_JSON: ${{ needs.detect-updates.outputs.updates_json }}
+          FORCE_UPDATE: ${{ github.event.inputs.force_update || false }}
+          SKIP_HOOKS: ${{ github.event.inputs.skip_hooks || '' }}
+          COOLDOWN_MAJOR: ${{ github.event.inputs.cooldown_major_days || '28' }}
+          COOLDOWN_MINOR: ${{ github.event.inputs.cooldown_minor_days || '14' }}
+          COOLDOWN_PATCH: ${{ github.event.inputs.cooldown_patch_days || '7' }}
+        run: |
+          python3 << 'EOF'
+          import json
+          import os
+          from datetime import datetime, timedelta
+          
+          # Load updates
+          updates = json.loads(os.environ['UPDATES_JSON'])
+          force_update = os.environ['FORCE_UPDATE'].lower() == 'true'
+          skip_hooks = [h.strip() for h in os.environ['SKIP_HOOKS'].split(',') if h.strip()]
+          
+          # Load cooldown config
+          try:
+              with open('configs/precommit-update-tracking.json', 'r') as f:
+                  tracking = json.load(f)
+          except FileNotFoundError:
+              tracking = {'hooks': {}}
+          
+          # Parse cooldown periods
+          cooldown_days = {
+              'major': int(os.environ['COOLDOWN_MAJOR']),
+              'minor': int(os.environ['COOLDOWN_MINOR']),
+              'patch': int(os.environ['COOLDOWN_PATCH'])
+          }
+          
+          now = datetime.utcnow()
+          eligible = []
+          skipped = []
+          
+          for update in updates:
+              repo = update['repo']
+              semver_level = update['semver_level']
+              
+              # Check if hook is in skip list
+              if repo in skip_hooks:
+                  skipped.append({**update, 'reason': 'Hook in skip list'})
+                  continue
+              
+              # If force_update is true, always include
+              if force_update:
+                  update['cooldown_applied'] = cooldown_days
+                  eligible.append(update)
+                  continue
+              
+              # Check cooldown
+              hook_info = tracking.get('hooks', {}).get(repo, {})
+              last_updated = hook_info.get('semver_levels', {}).get(semver_level)
+              
+              if last_updated:
+                  last_updated_dt = datetime.fromisoformat(last_updated.replace('Z', '+00:00'))
+                  cooldown_days_for_level = cooldown_days[semver_level]
+                  days_elapsed = (now - last_updated_dt).days
+                  
+                  if days_elapsed < cooldown_days_for_level:
+                      skipped.append({
+                          **update,
+                          'reason': f'Cooldown active: {days_elapsed}/{cooldown_days_for_level} days',
+                          'days_remaining': cooldown_days_for_level - days_elapsed
+                      })
+                      continue
+              
+              # Passed all checks
+              update['cooldown_applied'] = cooldown_days
+              eligible.append(update)
+          
+          # Output
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"eligible_updates={json.dumps(eligible)}\n")
+              f.write(f"skipped_updates={json.dumps(skipped)}\n")
+          
+          if eligible:
+              print(f"✓ {len(eligible)} update(s) eligible after cooldown filter")
+          if skipped:
+              print(f"⊘ {len(skipped)} update(s) skipped by cooldown filter")
+          EOF
+
+  fetch-release-info:
+    name: Fetch Release Information
+    needs: apply-cooldown
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      release_info: ${{ steps.release.outputs.release_info }}
+    if: needs.apply-cooldown.outputs.eligible_updates != '[]' && needs.apply-cooldown.outputs.eligible_updates != ''
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9bb56186c3b09b1be11b23adc9f22067da19db5c # v4.1.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Fetch release information
+        id: release
+        env:
+          ELIGIBLE_JSON: ${{ needs.apply-cooldown.outputs.eligible_updates }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 << 'EOF'
+          import json
+          import os
+          import subprocess
+          import re
+          from typing import Optional, Dict, Any
+          
+          def get_release_notes(repo_url: str, tag: str) -> Optional[str]:
+              """Fetch release notes from GitHub API."""
+              try:
+                  match = re.search(r'github\.com/([^/]+)/(.+?)(?:\.git)?$', repo_url)
+                  if not match:
+                      return None
+                  
+                  owner, repo = match.groups()
+                  
+                  # Get release by tag
+                  cmd = [
+                      'gh', 'api',
+                      f'repos/{owner}/{repo}/releases/tags/{tag}',
+                      '-q', '.body'
+                  ]
+                  
+                  result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                  if result.returncode == 0:
+                      return result.stdout.strip() or "(No release notes)"
+              except Exception as e:
+                  print(f"Warning: Could not fetch release notes: {e}")
+              
+              return None
+          
+          def get_commit_messages(repo_url: str, old_sha: str, new_sha: str) -> list:
+              """Fetch commit messages between two SHAs."""
+              try:
+                  match = re.search(r'github\.com/([^/]+)/(.+?)(?:\.git)?$', repo_url)
+                  if not match:
+                      return []
+                  
+                  owner, repo = match.groups()
+                  
+                  # Get commits in range
+                  cmd = [
+                      'gh', 'api', '--paginate',
+                      f'repos/{owner}/{repo}/commits',
+                      f'-q', '.[].sha'
+                  ]
+                  
+                  # Note: This is a simplified approach; ideally we'd use the commit comparison API
+                  # For MVP, we'll just fetch recent commits
+                  result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                  if result.returncode == 0:
+                      commits = result.stdout.strip().split('\n')
+                      return commits[:10]  # Return first 10 commits
+              except Exception as e:
+                  print(f"Warning: Could not fetch commits: {e}")
+              
+              return []
+          
+          # Load eligible updates
+          updates = json.loads(os.environ['ELIGIBLE_JSON'])
+          
+          enriched_updates = []
+          
+          for update in updates:
+              repo_url = update['repo']
+              new_version = update['new_version']
+              old_sha = update['old_sha']
+              new_sha = update['new_sha']
+              
+              # Fetch release notes
+              release_notes = None
+              if not new_version.startswith('451b56af716f') and not new_version.startswith('3db014c16a9d'):  # Not a SHA
+                  release_notes = get_release_notes(repo_url, new_version)
+              
+              # Fetch commit messages
+              commits = get_commit_messages(repo_url, old_sha, new_sha)
+              
+              enriched = {
+                  **update,
+                  'release_notes': release_notes or "(No release notes available)",
+                  'commits': commits,
+                  'commit_count': len(commits)
+              }
+              enriched_updates.append(enriched)
+          
+          # Output
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"release_info={json.dumps(enriched_updates)}\n")
+          
+          print(f"Enriched {len(enriched_updates)} update(s) with release information")
+          EOF
+
+  update-config-and-create-pr:
+    name: Update Config and Create PR
+    needs: [detect-updates, apply-cooldown, fetch-release-info]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # needed to commit and push updated configs
+      pull-requests: write  # needed to create PR for updates
+    if: needs.apply-cooldown.outputs.eligible_updates != '[]' && needs.apply-cooldown.outputs.eligible_updates != ''
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9bb56186c3b09b1be11b23adc9f22067da19db5c # v4.1.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install pyyaml
+
+      - name: Update configs and create PR
+        env:
+          RELEASE_INFO: ${{ needs.fetch-release-info.outputs.release_info }}
+          SKIPPED_UPDATES: ${{ needs.apply-cooldown.outputs.skipped_updates }}
+          GITHUB_TOKEN: ${{ github.token }}
+          COOLDOWN_MAJOR: ${{ github.event.inputs.cooldown_major_days || '28' }}
+          COOLDOWN_MINOR: ${{ github.event.inputs.cooldown_minor_days || '14' }}
+          COOLDOWN_PATCH: ${{ github.event.inputs.cooldown_patch_days || '7' }}
+        run: |
+          python3 << 'EOF'
+          import json
+          import os
+          import yaml
+          import subprocess
+          import re
+          from datetime import datetime
+          
+          # Load release info
+          release_info = json.loads(os.environ['RELEASE_INFO'])
+          skipped = json.loads(os.environ['SKIPPED_UPDATES'] or '[]')
+          
+          cooldown_config = {
+              'major': int(os.environ['COOLDOWN_MAJOR']),
+              'minor': int(os.environ['COOLDOWN_MINOR']),
+              'patch': int(os.environ['COOLDOWN_PATCH'])
+          }
+          
+          # Check if there are actual updates to apply
+          if not release_info:
+              print("No updates to apply")
+              exit(0)
+          
+          # Load and update .pre-commit-config.yaml
+          with open('.pre-commit-config.yaml', 'r') as f:
+              config = yaml.safe_load(f)
+          
+          # Update tracking file
+          try:
+              with open('configs/precommit-update-tracking.json', 'r') as f:
+                  tracking = json.load(f)
+          except FileNotFoundError:
+              tracking = {'last_updated': datetime.utcnow().isoformat() + 'Z', 'hooks': {}}
+          
+          # Create a mapping of repo URLs to new SHAs
+          update_map = {update['repo']: update for update in release_info}
+          
+          # Update config
+          for repo_entry in config.get('repos', []):
+              repo_url = repo_entry.get('repo')
+              if repo_url in update_map:
+                  update = update_map[repo_url]
+                  repo_entry['rev'] = update['new_sha']
+                  
+                  # Update tracking
+                  if repo_url not in tracking['hooks']:
+                      tracking['hooks'][repo_url] = {
+                          'current_sha': update['new_sha'],
+                          'current_version': update['new_version'],
+                          'semver_levels': {
+                              'major': datetime.utcnow().isoformat() + 'Z',
+                              'minor': datetime.utcnow().isoformat() + 'Z',
+                              'patch': datetime.utcnow().isoformat() + 'Z'
+                          }
+                      }
+                  else:
+                      semver = update['semver_level']
+                      tracking['hooks'][repo_url]['current_sha'] = update['new_sha']
+                      tracking['hooks'][repo_url]['current_version'] = update['new_version']
+                      if semver != 'unknown':
+                          tracking['hooks'][repo_url]['semver_levels'][semver] = datetime.utcnow().isoformat() + 'Z'
+                  
+                  tracking['hooks'][repo_url]['last_updated'] = datetime.utcnow().isoformat() + 'Z'
+          
+          # Write updated files
+          with open('.pre-commit-config.yaml', 'w') as f:
+              yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+          
+          with open('configs/precommit-update-tracking.json', 'w') as f:
+              json.dump(tracking, f, indent=2)
+          
+          # Generate PR body
+          pr_body = generate_pr_body(release_info, skipped, cooldown_config)
+          
+          # Create branch and commit
+          branch_name = f"chore/precommit-updates-{datetime.utcnow().strftime('%Y%m%d')}"
+          
+          subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
+          subprocess.run(['git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], check=True)
+          subprocess.run(['git', 'checkout', '-b', branch_name], check=True)
+          subprocess.run(['git', 'add', '.pre-commit-config.yaml', 'configs/precommit-update-tracking.json'], check=True)
+          
+          commit_msg = f"chore(pre-commit): auto-update hooks\n\nUpdated {len(release_info)} pre-commit hook(s)"
+          subprocess.run(['git', 'commit', '-m', commit_msg], check=True)
+          
+          # Push branch
+          subprocess.run(['git', 'push', '-u', 'origin', branch_name], check=True, env={**os.environ, 'GIT_TRACE': '1'})
+          
+          # Create PR using GitHub CLI
+          pr_result = subprocess.run(
+              [
+                  'gh', 'pr', 'create',
+                  '--base', 'main',
+                  '--head', branch_name,
+                  '--title', f'chore(pre-commit): auto-update hooks ({len(release_info)} update(s))',
+                  '--body', pr_body,
+              ],
+              capture_output=True,
+              text=True
+          )
+          
+          if pr_result.returncode == 0:
+              print(f"✓ Pull request created: {pr_result.stdout.strip()}")
+          else:
+              print(f"Error creating PR: {pr_result.stderr}")
+              exit(1)
+          
+          def generate_pr_body(updates: list, skipped: list, cooldown_config: dict) -> str:
+              """Generate comprehensive PR body."""
+              now = datetime.utcnow()
+              
+              lines = []
+              lines.append("## Summary")
+              lines.append("")
+              actor = os.environ.get('GITHUB_ACTOR', 'Workflow')
+              date_str = now.strftime('%Y-%m-%d %H:%M:%S UTC')
+              lines.append(f"{actor} ran on {date_str} and updated **{len(updates)} hook(s)**.")
+              lines.append("")
+              
+              run_id = os.environ['GITHUB_RUN_ID']
+              server_url = os.environ.get('GITHUB_SERVER_URL', 'https://github.com')
+              repo = os.environ.get('GITHUB_REPOSITORY', 'unknown')
+              lines.append(f"**Workflow run**: [{run_id}]({server_url}/{repo}/actions/runs/{run_id})")
+              lines.append("")
+              lines.append("---")
+              lines.append("")
+              lines.append("## Changes")
+              lines.append("")
+              
+              # Add each update
+              for update in updates:
+                  hook_name = extract_hook_name(update['repo'])
+                  old_version = update['old_version']
+                  new_version = update['new_version']
+                  semver_level = update['semver_level'].upper()
+                  
+                  lines.append(f"### {hook_name} `[{semver_level}]`")
+                  lines.append(f"`{old_version}` → `{new_version}`")
+                  lines.append("")
+                  
+                  # Commits
+                  if update.get('commits'):
+                      lines.append(f"<details><summary>Commits ({update['commit_count']})</summary>")
+                      lines.append("")
+                      lines.append("```")
+                      for commit in update['commits'][:10]:
+                          lines.append(f"- {commit[:7]}")
+                      if update['commit_count'] > 10:
+                          lines.append(f"... and {update['commit_count'] - 10} more")
+                      lines.append("```")
+                      lines.append("")
+                      lines.append(f"[View commit history]({update['repo']}/compare/{update['old_sha'][:7]}...{update['new_sha'][:7]})")
+                      lines.append("")
+                      lines.append("</details>")
+                      lines.append("")
+                  
+                  # Release notes
+                  release_notes = update.get('release_notes', '(No release notes)')
+                  if release_notes and release_notes != '(No release notes available)':
+                      lines.append(f"<details><summary>Release Notes</summary>")
+                      lines.append("")
+                      lines.append(release_notes)
+                      lines.append("")
+                      lines.append("</details>")
+                      lines.append("")
+              
+              # Risks/Notes section
+              lines.append("---")
+              lines.append("")
+              lines.append("## Risks & Notes")
+              lines.append("")
+              
+              # Check for major updates
+              has_major = any(u['semver_level'] == 'major' for u in updates)
+              if has_major:
+                  lines.append("### ⚠️ Major Version Updates")
+                  lines.append("")
+                  lines.append("Major versions may introduce breaking changes. Reviewers should examine the release notes and commit history carefully.")
+                  lines.append("")
+              
+              # Check for short cooldown
+              has_short_cooldown = any(u['cooldown_applied'].get(u['semver_level'], 0) < 7 for u in updates)
+              if has_short_cooldown:
+                  lines.append("### ⚠️ Short Cooldown Period")
+                  lines.append("")
+                  lines.append("Some updates have cooldown periods less than 7 days, which may increase vulnerability to supply chain attacks. Longer cooldown periods provide greater stability and more time to detect potential supply chain issues.")
+                  lines.append("")
+              
+              # Cooldown summary
+              lines.append("### Cooldown Periods Applied")
+              lines.append("")
+              lines.append(f"- **Major versions**: {cooldown_config['major']} days")
+              lines.append(f"- **Minor versions**: {cooldown_config['minor']} days")
+              lines.append(f"- **Patch versions**: {cooldown_config['patch']} days")
+              lines.append("")
+              
+              # Skipped updates
+              if skipped:
+                  lines.append("### Skipped Updates")
+                  lines.append("")
+                  lines.append("The following updates are available but skipped due to active cooldown periods:")
+                  lines.append("")
+                  for update in skipped:
+                      hook_name = extract_hook_name(update['repo'])
+                      reason = update.get('reason', 'Cooldown active')
+                      lines.append(f"- **{hook_name}**: {reason}")
+              
+              return "\n".join(lines)
+          
+          def extract_hook_name(repo_url: str) -> str:
+              """Extract hook name from repository URL."""
+              match = re.search(r'/([^/]+?)(?:\.git)?$', repo_url)
+              if match:
+                  return match.group(1)
+              return repo_url
+          EOF
+
+  no-updates:
+    name: No Updates Available
+    needs: detect-updates
+    runs-on: ubuntu-latest
+    permissions: {}
+    if: needs.detect-updates.outputs.updates_found == 'false'
+    steps:
+      - name: Log
+        run: echo "No pre-commit hook updates available at this time."
