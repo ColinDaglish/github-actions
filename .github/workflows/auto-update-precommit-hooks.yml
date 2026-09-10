@@ -520,6 +520,7 @@ jobs:
           RELEASE_INFO: ${{ needs.fetch-release-info.outputs.release_info }}
           SKIPPED_UPDATES: ${{ needs.apply-cooldown.outputs.skipped_updates }}
           GITHUB_TOKEN: ${{ github.token }}
+          FORCE_UPDATE: ${{ github.event.inputs.force_update || false }}
           COOLDOWN_MAJOR: ${{ github.event.inputs.cooldown_major_days || '28' }}
           COOLDOWN_MINOR: ${{ github.event.inputs.cooldown_minor_days || '14' }}
           COOLDOWN_PATCH: ${{ github.event.inputs.cooldown_patch_days || '7' }}
@@ -535,6 +536,7 @@ jobs:
           # Load release info
           release_info = json.loads(os.environ['RELEASE_INFO'])
           skipped = json.loads(os.environ['SKIPPED_UPDATES'] or '[]')
+          force_update = os.environ.get('FORCE_UPDATE', 'false').lower() == 'true'
           
           cooldown_config = {
               'major': int(os.environ['COOLDOWN_MAJOR']),
@@ -603,7 +605,7 @@ jobs:
                   return match.group(1)
               return repo_url
           
-          def generate_pr_body(updates: list, skipped: list, cooldown_config: dict) -> str:
+          def generate_pr_body(updates: list, skipped: list, cooldown_config: dict, force_update: bool = False) -> str:
               """Generate comprehensive PR body."""
               now = datetime.now(timezone.utc)
               
@@ -686,15 +688,24 @@ jobs:
                   lines.append("> Some updates have cooldown periods less than 7 days, which may increase vulnerability to supply chain attacks. Longer cooldown periods provide greater stability and more time to detect potential supply chain issues.")
                   lines.append("")
               
-              # Cooldown summary
-              lines.append("### Cooldown Periods Applied")
-              lines.append("")
-              lines.append(f"- **Major versions**: {cooldown_config['major']} days")
-              lines.append(f"- **Minor versions**: {cooldown_config['minor']} days")
-              lines.append(f"- **Patch versions**: {cooldown_config['patch']} days")
-              lines.append("")
+              # Cooldown summary (only show if not overridden by force_update)
+              if force_update:
+                  lines.append("### Update Policy")
+                  lines.append("")
+                  lines.append("> [!NOTE]")
+                  lines.append("> **Force Update Override**")
+                  lines.append(">")
+                  lines.append("> Cooldown periods were bypassed via `force_update: true`. All eligible updates were applied regardless of cooldown state.")
+                  lines.append("")
+              else:
+                  lines.append("### Cooldown Periods Applied")
+                  lines.append("")
+                  lines.append(f"- **Major versions**: {cooldown_config['major']} days")
+                  lines.append(f"- **Minor versions**: {cooldown_config['minor']} days")
+                  lines.append(f"- **Patch versions**: {cooldown_config['patch']} days")
+                  lines.append("")
               
-              # Skipped updates
+              # Skipped updates (only relevant if not force_update)
               if skipped:
                   lines.append("### Skipped Updates")
                   lines.append("")
@@ -708,7 +719,7 @@ jobs:
               return "\n".join(lines)
           
           # Generate PR body
-          pr_body = generate_pr_body(release_info, skipped, cooldown_config)
+          pr_body = generate_pr_body(release_info, skipped, cooldown_config, force_update)
           
           # Create branch and commit
           branch_name = f"chore/precommit-updates-{datetime.now(timezone.utc).strftime('%Y%m%d')}"
