@@ -89,7 +89,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install ruamel.yaml
+          pip install pyyaml
 
       - name: Detect available updates
         id: detect
@@ -97,7 +97,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           python3 << 'EOF'
-          from ruamel.yaml import YAML
+          import yaml
           import json
           import subprocess
           import os
