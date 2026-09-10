@@ -77,7 +77,7 @@ jobs:
       updates_json: ${{ steps.detect.outputs.updates_json }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@9bb56186c3b09b1be11b23adc9f22067da19db5c # v4.1.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -252,7 +252,7 @@ jobs:
     if: needs.detect-updates.outputs.updates_found == 'true'
     steps:
       - name: Check out repository
-        uses: actions/checkout@9bb56186c3b09b1be11b23adc9f22067da19db5c # v4.1.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -357,7 +357,7 @@ jobs:
     if: needs.apply-cooldown.outputs.eligible_updates != '[]' && needs.apply-cooldown.outputs.eligible_updates != ''
     steps:
       - name: Check out repository
-        uses: actions/checkout@9bb56186c3b09b1be11b23adc9f22067da19db5c # v4.1.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -474,7 +474,7 @@ jobs:
     if: needs.apply-cooldown.outputs.eligible_updates != '[]' && needs.apply-cooldown.outputs.eligible_updates != ''
     steps:
       - name: Check out repository
-        uses: actions/checkout@9bb56186c3b09b1be11b23adc9f22067da19db5c # v4.1.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
