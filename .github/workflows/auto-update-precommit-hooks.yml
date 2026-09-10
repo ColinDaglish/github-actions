@@ -761,8 +761,9 @@ jobs:
           commit_msg = f"chore(pre-commit): auto-update hooks\n\nUpdated {len(release_info)} pre-commit hook(s)"
           subprocess.run(['git', 'commit', '-m', commit_msg], check=True)
           
-          # Push branch (git authentication already configured via credential helper)
-          subprocess.run(['git', 'push', '-u', 'origin', branch_name], check=True)
+          # Push branch with force-with-lease to handle existing remote branch safely
+          # (useful when multiple runs occur on the same day during testing)
+          subprocess.run(['git', 'push', '--force-with-lease', '-u', 'origin', branch_name], check=True)
           
           # Create PR using GitHub CLI
           pr_result = subprocess.run(
