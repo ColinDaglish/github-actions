@@ -210,11 +210,11 @@ Then commit and push. The next workflow run will skip that hook.
 
 ### Reset Cooldown for a Single Hook
 
-Edit `configs/precommit-update-tracking.json` and set the desired `semver_levels.{level}` to an old date:
+Edit `configs/precommit-update-tracking.json` and set the desired `semver_levels.{level}` to an old date (e.g., `2020-01-01T00:00:00Z`):
 
 ```json
 "semver_levels": {
-  "major": "2020-01-01T00:00:00Z",  // Reset to old date
+  "major": "2020-01-01T00:00:00Z",
   "minor": "2026-09-10T12:34:56Z",
   "patch": "2026-09-10T12:34:56Z"
 }
