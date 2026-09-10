@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.8.0](https://github.com/ColinDaglish/github-actions/compare/v1.7.0...v1.8.0) (2026-09-10)
+
+
+### Features
+
+* add auto-update workflow for pre-commit hooks ([4a93253](https://github.com/ColinDaglish/github-actions/commit/4a9325381a84dcb7d1cd3b9840c5fcad2a76218b))
+* add function to resolve commit SHA to tag and enhance version tracking for pre-commit hooks ([d8e02c0](https://github.com/ColinDaglish/github-actions/commit/d8e02c0c411e125f6de42823d78e3758f013ed69))
+* add installation step for pyyaml dependency in auto-update workflow ([44fa3ce](https://github.com/ColinDaglish/github-actions/commit/44fa3cee48d27c472e7f2cef45763104abf0090f))
+* enhance get_latest_release function to resolve tag to immutable commit SHA ([ed745d2](https://github.com/ColinDaglish/github-actions/commit/ed745d2344037d971c9db4ea4d54d3761abd986c))
+* enhance workflow_call inputs with cooldown and skip options for pre-commit hooks ([7298ea1](https://github.com/ColinDaglish/github-actions/commit/7298ea1a1fcce0110785c339bb7b745801542698))
+* refactor PR generation logic and enhance warning messages for pre-commit updates ([cef05d5](https://github.com/ColinDaglish/github-actions/commit/cef05d51568da0be364071ff252d8722872d7758))
+
+
+### Bug Fixes
+
+* update cron schedule to run weekly on Monday at 09:00 UTC and adjust datetime handling to use timezone-aware objects ([6473117](https://github.com/ColinDaglish/github-actions/commit/6473117b07324c32626ce600a1208a4e4a24f317))
+
 ## [1.7.0](https://github.com/datasciencecampus/github-actions/compare/v1.6.0...v1.7.0) (2026-09-09)
 
 
