@@ -753,15 +753,14 @@ jobs:
           commit_msg = f"chore(pre-commit): auto-update hooks\n\nUpdated {len(release_info)} pre-commit hook(s)"
           subprocess.run(['git', 'commit', '-m', commit_msg], check=True)
           
-          # Push branch using token in URL (temporary, safe because token is already exposed via env)
-          # Get repository info from environment
-          repo = os.environ.get('GITHUB_REPOSITORY', '')
-          github_token = os.environ.get('GITHUB_TOKEN', '')
-          remote_url = f'https://x-access-token:{github_token}@github.com/{repo}.git'
+          # Use GitHub CLI to authenticate git for pushing
+          # gh auth setup-git configures git to use gh's stored credentials
+          subprocess.run(['gh', 'auth', 'setup-git'], check=True)
+          
+          # Push branch
           subprocess.run(
-              ['git', 'push', '--force-with-lease', '-u', remote_url, branch_name],
-              check=True,
-              env={**os.environ, 'GIT_TRACE': '0'}  # Disable tracing to avoid logging token
+              ['git', 'push', '--force-with-lease', '-u', 'origin', branch_name],
+              check=True
           )
           
           # Create PR using GitHub CLI
