@@ -8,7 +8,7 @@ Complete reference for the auto-update pre-commit hooks workflow.
 |----------|-------|
 | **Workflow file** | `.github/workflows/auto-update-precommit-hooks.yml` |
 | **Type** | Standalone workflow (not reusable) |
-| **Triggers** | `workflow_dispatch` (manual), `schedule` (weekly Monday 09:00 UTC) |
+| **Triggers** | `workflow_dispatch` (manual), `schedule` (weekly Tuesday 03:00 UTC) |
 | **Permissions** | `contents: write`, `pull-requests: write` |
 
 ## Inputs (workflow_dispatch only)
@@ -290,7 +290,7 @@ The following updates are available but skipped...
 
 ### `schedule` (Automatic Weekly Run)
 
-Runs at **Monday 09:00 UTC** using default cooldown periods.
+Runs at **Tuesday 03:00 UTC** using default cooldown periods.
 
 - Input: `cooldown_major_days=28`, `cooldown_minor_days=14`, `cooldown_patch_days=7`
 - Actor: Workflow (no explicit user)

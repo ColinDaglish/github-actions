@@ -14,7 +14,7 @@ The auto-update workflow:
 
 ### Automatic Scheduled Updates
 
-The workflow runs automatically every Monday at 09:00 UTC. No action needed.
+The workflow runs automatically every Tuesday at 03:00 UTC. No action needed.
 
 To view scheduled runs, navigate to:
 ```

@@ -333,7 +333,7 @@ jobs:
           python3 << 'EOF'
           import json
           import os
-          from datetime import datetime, timedelta
+          from datetime import datetime, timedelta, timezone
           
           # Load updates
           updates = json.loads(os.environ['UPDATES_JSON'])
@@ -354,7 +354,7 @@ jobs:
               'patch': int(os.environ['COOLDOWN_PATCH'])
           }
           
-          now = datetime.utcnow()
+          now = datetime.now(timezone.utc)
           eligible = []
           skipped = []
           
@@ -562,7 +562,7 @@ jobs:
           import yaml
           import subprocess
           import re
-          from datetime import datetime
+          from datetime import datetime, timezone
           
           # Load release info
           release_info = json.loads(os.environ['RELEASE_INFO'])
@@ -637,7 +637,7 @@ jobs:
           
           def generate_pr_body(updates: list, skipped: list, cooldown_config: dict) -> str:
               """Generate comprehensive PR body."""
-              now = datetime.utcnow()
+              now = datetime.now(timezone.utc)
               
               lines = []
               lines.append("## Summary")
