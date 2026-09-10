@@ -748,10 +748,11 @@ jobs:
           subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
           subprocess.run(['git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], check=True)
           
-          # Configure git to use GITHUB_TOKEN for authentication (secure alternative to persist-credentials)
+          # Configure git to use GITHUB_TOKEN for authentication via HTTP header
+          # This is more reliable than URL rewriting in GitHub Actions environments
           github_token = os.environ.get('GITHUB_TOKEN', '')
           subprocess.run(
-              ['git', 'config', '--global', 'url.https://x-access-token:' + github_token + '@github.com/.insteadOf', 'https://github.com/'],
+              ['git', 'config', '--global', 'http.extraheader', f'Authorization: token {github_token}'],
               check=True
           )
           
