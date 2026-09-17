@@ -89,7 +89,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pyyaml
+          pip install -r requirements.txt
 
       - name: Detect available updates
         id: detect
@@ -291,7 +291,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install ruamel.yaml
+          pip install -r requirements.txt
 
       - name: Apply cooldown filters
         id: cooldown
@@ -518,7 +518,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install ruamel.yaml
+            pip install -r requirements.txt
 
       - name: Update configs and create PR
         env:
