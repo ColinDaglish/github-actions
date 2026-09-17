@@ -567,7 +567,7 @@ jobs:
               with open('configs/precommit-update-tracking.json', 'r') as f:
                   tracking = json.load(f)
           except FileNotFoundError:
-              tracking = {'last_updated': datetime.now(timezone.utc).isoformat() + 'Z', 'hooks': {}}
+              tracking = {'last_updated': datetime.now(timezone.utc).isoformat(), 'hooks': {}}
           
           # Create a mapping of repo URLs to new SHAs
           update_map = {update['repo']: update for update in release_info}
@@ -601,9 +601,9 @@ jobs:
                           'current_sha': update['new_sha'],
                           'current_version': update['new_version'],
                           'semver_levels': {
-                              'major': datetime.now(timezone.utc).isoformat() + 'Z',
-                              'minor': datetime.now(timezone.utc).isoformat() + 'Z',
-                              'patch': datetime.now(timezone.utc).isoformat() + 'Z'
+                              'major': datetime.now(timezone.utc).isoformat(),
+                              'minor': datetime.now(timezone.utc).isoformat(),
+                              'patch': datetime.now(timezone.utc).isoformat()
                           }
                       }
                   else:
@@ -611,9 +611,9 @@ jobs:
                       tracking['hooks'][repo_url]['current_sha'] = update['new_sha']
                       tracking['hooks'][repo_url]['current_version'] = update['new_version']
                       if semver != 'unknown':
-                          tracking['hooks'][repo_url]['semver_levels'][semver] = datetime.now(timezone.utc).isoformat() + 'Z'
+                          tracking['hooks'][repo_url]['semver_levels'][semver] = datetime.now(timezone.utc).isoformat()
                   
-                  tracking['hooks'][repo_url]['last_updated'] = datetime.now(timezone.utc).isoformat() + 'Z'
+                  tracking['hooks'][repo_url]['last_updated'] = datetime.now(timezone.utc).isoformat()
           
           # Write updated files with comment preservation
           with open('.pre-commit-config.yaml', 'w') as f:
