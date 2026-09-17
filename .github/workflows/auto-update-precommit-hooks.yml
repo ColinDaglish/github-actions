@@ -115,11 +115,11 @@ jobs:
                   
                   owner, repo = match.groups()
                   
-                  # Get the latest release tag (immutable)
+                  # Get the latest non-draft, non-prerelease tag (immutable)
                   cmd = [
-                      'gh', 'api', '--paginate',
-                      f'repos/{owner}/{repo}/releases',
-                      '-q', '.[0].tag_name'
+                      'gh', 'api',
+                      f'repos/{owner}/{repo}/releases/latest',
+                      '-q', '.tag_name'
                   ]
                   
                   result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
