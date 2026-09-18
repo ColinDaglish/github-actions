@@ -17,6 +17,7 @@ from .mutation import apply_updates
 from .policy import filter_updates
 from .pr_body import extract_hook_name, generate_pr_body
 from .release_info import enrich_updates
+from .validation import alignment_errors, initialize_tracking
 
 
 def _write_output(values: dict[str, Any]) -> None:
@@ -175,6 +176,22 @@ def apply_command(args: argparse.Namespace) -> None:
             raise SystemExit(result.stderr or f"Command failed: {' '.join(command[:3])}")
 
 
+def validate_command(args: argparse.Namespace) -> None:
+    """Validate pre-commit configuration and tracking alignment."""
+    tracking_path = _path(args.tracking)
+    if not tracking_path.exists():
+        print(f"WARNING: {tracking_path} not found; creating baseline tracking state")
+        initialize_tracking(_path(args.config), tracking_path)
+        return
+
+    errors = alignment_errors(_path(args.config), tracking_path)
+    if errors:
+        for error in errors:
+            print(f"ERROR: {error}")
+        raise SystemExit(1)
+    print("Pre-commit configuration and tracking state are aligned")
+
+
 def _parser() -> argparse.ArgumentParser:
     """Build the command-line parser for all workflow stages.
 
@@ -183,7 +200,7 @@ def _parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(prog="precommit-updates")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    for name in ("detect", "cooldown", "release-info", "apply"):
+    for name in ("detect", "cooldown", "release-info", "apply", "validate"):
         subparser = subparsers.add_parser(name)
         subparser.add_argument("--config", default=".pre-commit-config.yaml")
         subparser.add_argument("--tracking", default="configs/precommit-update-tracking.json")
