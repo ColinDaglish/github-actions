@@ -63,14 +63,14 @@ concurrency:
   group: auto-update-precommit-hooks
   cancel-in-progress: false
 
-permissions: {}
+permissions: {} # Deny token access by default; jobs grant only the permissions they need.
 
 jobs:
   detect-updates:
     name: Detect Available Updates
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    permissions: # Each job receives only the repository access required for its stage.
+      contents: read # Required to inspect the pre-commit configuration and tracking data.
     outputs:
       updates_found: ${{ steps.detect.outputs.updates_found }}
       updates_json: ${{ steps.detect.outputs.updates_json }}
@@ -96,8 +96,8 @@ jobs:
     name: Apply Cooldown Filters
     needs: detect-updates
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    permissions: # Each job receives only the repository access required for its stage.
+      contents: read # Required to read tracking data while applying cooldown policy.
     outputs:
       eligible_updates: ${{ steps.cooldown.outputs.eligible_updates }}
       skipped_updates: ${{ steps.cooldown.outputs.skipped_updates }}
@@ -128,8 +128,8 @@ jobs:
     name: Fetch Release Information
     needs: apply-cooldown
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    permissions: # Each job receives only the repository access required for its stage.
+      contents: read # Required to read repository metadata for release enrichment.
     outputs:
       release_info: ${{ steps.release.outputs.release_info }}
     if: needs.apply-cooldown.outputs.eligible_updates != '[]' && needs.apply-cooldown.outputs.eligible_updates != ''
@@ -155,9 +155,9 @@ jobs:
     name: Update Config and Create PR
     needs: [detect-updates, apply-cooldown, fetch-release-info]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
+    permissions: # The final job needs write access to publish the update branch and pull request.
+      contents: write # Required to commit and push updated pre-commit configuration.
+      pull-requests: write # Required to create the update pull request.
     if: needs.apply-cooldown.outputs.eligible_updates != '[]' && needs.apply-cooldown.outputs.eligible_updates != ''
     steps:
       - name: Check out repository
@@ -186,7 +186,7 @@ jobs:
     name: No Updates Available
     needs: detect-updates
     runs-on: ubuntu-latest
-    permissions: {}
+    permissions: {} # This reporting job does not access the GitHub token.
     if: needs.detect-updates.outputs.updates_found == 'false'
     steps:
       - name: Log
