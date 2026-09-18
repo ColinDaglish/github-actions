@@ -36,6 +36,22 @@ def _write_output(values: dict[str, Any]) -> None:
             print(f"{key}={serialized}")
 
 
+def _write_summary(markdown: str) -> None:
+    """Append Markdown to the GitHub Actions step summary when available."""
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary_path:
+        try:
+            with open(summary_path, "a") as summary_file:
+                summary_file.write(f"{markdown.rstrip()}\n")
+        except OSError as error:
+            print(f"WARNING: Could not write GitHub step summary: {error}")
+
+
+def _write_notice(title: str, message: str) -> None:
+    """Emit a readable GitHub Actions notice, or a local equivalent."""
+    print(f"::notice title={title}::{message}")
+
+
 def _path(value: str) -> Path:
     """Expand a command-line path value.
 
@@ -56,6 +72,25 @@ def detect_command(args: argparse.Namespace) -> None:
     """
     updates = detect_updates(_path(args.config), _path(args.tracking), GitHubClient())
     _write_output({"updates_found": "true" if updates else "false", "updates_json": updates})
+    if not updates:
+        _write_notice("No pre-commit updates", "All configured hooks are already current.")
+        _write_summary(
+            "## Pre-commit update check\n\n"
+            "> **No updates available**\n\n"
+            "All configured pre-commit hooks are already at their latest detected release."
+        )
+        return
+
+    rows = [
+        f"| `{update['repo']}` | `{update['old_version']}` | `{update['new_version']}` |"
+        for update in updates
+    ]
+    _write_summary(
+        "## Pre-commit update check\n\n"
+        f"> **{len(updates)} update(s) available**\n\n"
+        "| Hook | Current | Latest |\n| --- | --- | --- |\n"
+        + "\n".join(rows)
+    )
 
 
 def cooldown_command(args: argparse.Namespace) -> None:
@@ -82,6 +117,22 @@ def cooldown_command(args: argparse.Namespace) -> None:
         skip_hooks=skip_hooks,
     )
     _write_output({"eligible_updates": eligible, "skipped_updates": skipped})
+    if not eligible:
+        _write_notice(
+            "No updates after cooldown",
+            f"{len(skipped)} available update(s) were skipped; downstream jobs will not run.",
+        )
+    _write_summary(
+        "## Cooldown filter\n\n"
+        f"| Result | Count |\n| --- | ---: |\n| Eligible | {len(eligible)} |\n"
+        f"| Skipped | {len(skipped)} |\n\n"
+        + (
+            "> **No eligible updates**\n\n"
+            "The workflow stopped before release enrichment and pull request creation."
+            if not eligible
+            else "> Eligible updates will continue to release enrichment."
+        )
+    )
 
 
 def release_info_command(args: argparse.Namespace) -> None:

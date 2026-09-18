@@ -193,5 +193,13 @@ jobs:
     permissions: {} # This reporting job does not access the GitHub token.
     if: needs.detect-updates.outputs.updates_found == 'false'
     steps:
-      - name: Log
-        run: echo "No pre-commit hook updates available at this time."
+      - name: Report no updates
+        run: |
+          echo '::notice title=Workflow complete::No pre-commit hook updates are available.'
+          {
+            echo '## Workflow complete'
+            echo
+            echo '> **No updates available**'
+            echo
+            echo 'No pull request was created.'
+          } >> "$GITHUB_STEP_SUMMARY"

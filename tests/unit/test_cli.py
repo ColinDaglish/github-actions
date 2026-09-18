@@ -15,6 +15,15 @@ def test_write_output_preserves_workflow_keys_and_json(tmp_path, monkeypatch):
     ]
 
 
+def test_write_summary_appends_markdown(tmp_path, monkeypatch):
+    summary = tmp_path / "summary"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+
+    cli._write_summary("## Status\n\nAll clear")
+
+    assert summary.read_text() == "## Status\n\nAll clear\n"
+
+
 def test_cooldown_command_reads_workflow_environment(tmp_path, monkeypatch):
     tracking = tmp_path / "tracking.json"
     tracking.write_text(json.dumps({"hooks": {}}))
