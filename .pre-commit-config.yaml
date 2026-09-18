@@ -5,7 +5,7 @@ repos:
       - id: zizmor
         args: [--fix, --persona=pedantic]
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: 3db014c16a9d31997ab8c07a4d61fcce936c8f0d  # frozen: v4.4.0
+    rev: 5c3f3c61b143a94e9ab5d767ff4d0dc9d6801aa3  # frozen: v4.3.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
