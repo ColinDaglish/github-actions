@@ -86,6 +86,8 @@ jobs:
           python-version: "3.13"
       - name: Install package
         run: python -m pip install .
+      - name: Validate pre-commit tracking alignment
+        run: python -m precommit_updates validate
       - name: Detect available updates
         id: detect
         env:
@@ -171,6 +173,8 @@ jobs:
           python-version: "3.13"
       - name: Install package
         run: python -m pip install .
+      - name: Initialize pre-commit tracking if needed
+        run: python -m precommit_updates validate
       - name: Update configs and create PR
         env:
           RELEASE_INFO: ${{ needs.fetch-release-info.outputs.release_info }}
@@ -189,5 +193,13 @@ jobs:
     permissions: {} # This reporting job does not access the GitHub token.
     if: needs.detect-updates.outputs.updates_found == 'false'
     steps:
-      - name: Log
-        run: echo "No pre-commit hook updates available at this time."
+      - name: Report no updates
+        run: |
+          echo '::notice title=Workflow complete::No pre-commit hook updates are available.'
+          {
+            echo '## Workflow complete'
+            echo
+            echo '> **No updates available**'
+            echo
+            echo 'No pull request was created.'
+          } >> "$GITHUB_STEP_SUMMARY"
