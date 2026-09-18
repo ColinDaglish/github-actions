@@ -1,1 +1,3 @@
-{}
+skip-check:
+  # This workflow intentionally exposes workflow_dispatch controls for update policy.
+  - CKV_GHA_7
